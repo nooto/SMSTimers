@@ -251,6 +251,7 @@ typedef enum MOBILETYPE
 + (NSString *)getCurrentMailFolder;
 + (void)setCurrentMailAccount:(NSString *)mailAccount withFolderName:(NSString *)mailFolder;
 
+
 //设置每次获取邮件的个数
 + (void)setMailPullNumber:(int)number;
 + (NSNumber*)getMailPullNumber;
