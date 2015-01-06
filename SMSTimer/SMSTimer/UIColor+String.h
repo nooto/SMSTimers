@@ -29,5 +29,15 @@
 + (UIColor *)colorFromColorString:(NSString *)colorString alpha:(CGFloat)alpha;
 
 
+
+
+/**
+ *  根据指定的颜色字符串和透明度 生成对应UIColor
+ *
+ *  @param colorString colorstring  OX000000 & #000000
+ *  @param alpha       透明度
+ *
+ *  @return UIColor
+ */
 + (UIColor *)colorWithRed:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue;
 @end
