@@ -1,0 +1,24 @@
+//
+//  ThinkMail_Folder.h
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-15.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import "ThinkMail_DBConfig.h"
+#import "../ThinkMail_DataModel.h"
+#import "ThinkMailDictionary.h"
+@interface ThinkMail_CDBConfig (ThinkMail_folder)
+
+-(void)insertFolder:(TKResponseDModel_FolderData*)message ToAccount:(NSString*)account;
+
+//查询  帐号下 对应文件夹的 所有邮件。
+-(NSMutableArray*)qureyFolderWithAccount:(NSString*)account;
+
+//删除文件夹
+-(BOOL)deleteFolderWithFid:(NSInteger)fid Account:(NSString*)account;
+-(BOOL)updateFolderUnreadMessageCountWithFid:(NSInteger)fid  unreadMessageCount:(NSInteger)count Account:(NSString*)account;
+-(NSMutableArray*)qureyFolderWithCondition:(NSDictionary*)dic Account:(NSString*)account;
+
+@end

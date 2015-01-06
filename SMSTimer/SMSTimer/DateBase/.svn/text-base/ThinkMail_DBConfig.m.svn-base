@@ -1,0 +1,295 @@
+//
+//  ThinkMail_CDBConfig.m
+//
+//
+//  Created by  on 12-5-28.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+//本地数据配置库
+#import "ThinkMail_DBConfig.h"
+#include <sys/xattr.h>
+#import "../AccountManage/ThinkMail_AccountManage.h"
+#import "ThinkMailDictionary.h"
+
+
+@implementation ThinkMail_CDBConfig
+@synthesize dbPath;
+
+static ThinkMail_CDBConfig* dbconfigShareInstance;
+
++(ThinkMail_CDBConfig*) shareInstace{
+	if (dbconfigShareInstance == nil) {
+		dbconfigShareInstance = [[ ThinkMail_CDBConfig alloc] init];
+	}
+	return dbconfigShareInstance;
+}
+
+-(id) init
+{
+	if ((self = [super init])) {
+	}
+	return self;
+}
+
+#pragma mark - 数据库基本操作。
+- (void)AddSkipBackupAttributeToFilePath: (NSString *)strFile
+{
+    u_int8_t b = 1;
+    setxattr([strFile fileSystemRepresentation], "com.apple.MobileBackup", &b, 1, 0, 0);
+}
+
+-(void)initDBPath:(NSString *)path{
+	if (path== nil && path.length  <= 0) {
+		return;
+	}
+	else{
+		self.dbPath = path;
+	}
+}
+- (ThinkMail_Database *)getDbWithAccount:(NSString*)account
+{
+	NSString *filePath=@"";
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+	filePath=[paths objectAtIndex:0];
+	[self AddSkipBackupAttributeToFilePath:filePath];
+	
+	NSMutableString * aTPath=[NSMutableString stringWithString:filePath];
+	[aTPath appendString:@"/"];
+	NSMutableString * tempPath =[NSMutableString stringWithString:aTPath];
+	[tempPath appendString:[NSString stringWithFormat:@"%@/",account]];
+	
+	// 判断文件夹是否存在，不存在则创建对应文件夹
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    BOOL isDir = FALSE;
+    BOOL isDirExist = [fileManager fileExistsAtPath:tempPath isDirectory:&isDir];
+    if(!(isDirExist && isDir))
+    {
+        BOOL bCreateDir = [fileManager createDirectoryAtPath:tempPath withIntermediateDirectories:YES attributes:nil error:nil];
+        if(!bCreateDir){
+            NSLog(@"Create Audio Directory Failed.");
+        }
+    }
+
+	//创建对应的帐号数据库文件。
+	if (account) {
+		[tempPath appendString:[NSString stringWithFormat:@"%@.db",account]];
+	}
+	else{
+		[tempPath appendString:@"ThinkMail_account.db"];
+	}
+	filePath = tempPath;
+	ThinkMail_Database *curDB =[ThinkMail_Database databaseWithPath:filePath];
+    return curDB;
+}
+
+
+//根据表名往表中插入一条记录
+-(BOOL) InsertIntoTableByName:(NSDictionary*)dic tableName:(NSString*)tableName :(ThinkMail_Database*)m_db
+{
+		if(dic==nil || [dic count]==0) return NO;
+		
+		NSArray * arrKeys=[dic allKeys];
+		NSArray * arrValues=[dic allValues];
+		NSInteger count=[arrKeys count];
+		NSString *sql = [NSString stringWithFormat:@"insert into %@(",tableName];
+		NSMutableString * tempsql=[NSMutableString stringWithString:sql];
+		for (int i=0; i<count; i++)
+		{
+			[tempsql appendString:[arrKeys objectAtIndex:i]];
+			if(i != count-1)
+			{
+				[tempsql appendString:@","];
+			}
+		}
+		[tempsql appendString:@") values("];
+		for(int k=0; k<count; k++)
+		{
+			[tempsql appendString:@"?"];
+			if(k != count-1)
+			{
+				[tempsql appendString:@","];
+			}
+		}
+		[tempsql appendString:@")"];
+		[m_db executeUpdate:tempsql withArgumentsInArray:arrValues];
+		if([m_db hadError])
+		{
+			NSLog(@"Insert into %@ table has Error, %@",tableName, [m_db lastError]);
+			return NO;
+		}
+		return YES;
+}
+
+//更新满足所有条件的记录
+-(BOOL)UpdateByTableName:(NSDictionary*)dic condition:(NSDictionary*)dicCondtion tableName:(NSString*)name :(ThinkMail_Database*)m_db
+{
+
+		if(dicCondtion==nil || [dicCondtion count]==0) return NO;
+		NSInteger count=[dic count];
+		if(dic==nil || count==0) return NO;
+		NSArray * keyArray=[dic allKeys];
+		NSString *sql = [NSString stringWithFormat:@"update %@ set ",name];
+		NSMutableString * tempsql=[NSMutableString stringWithString:sql];
+		
+		for (int i=0; i<count; i++) {
+			[tempsql appendString:[keyArray objectAtIndex:i]];
+			[tempsql appendString:@"=?"];
+			if(i != count-1)
+			{
+				[tempsql appendString:@", "];
+			}
+		}
+		count=[dicCondtion count];
+		[tempsql appendString:@" where "];
+		keyArray=[dicCondtion allKeys];
+		for (int i=0; i<count; i++) {
+			[tempsql appendString:[keyArray objectAtIndex:i]];
+			[tempsql appendString:@"=?"];
+			if(i != count-1)
+			{
+				[tempsql appendString:@" and "];
+			}
+		}
+		
+		NSMutableArray * valArray=[NSMutableArray arrayWithArray:[dic allValues]];
+		NSArray *conditionValArray=[dicCondtion allValues];
+		for(int i=0;i<[conditionValArray count];i++)
+		{
+			[valArray addObject:[conditionValArray objectAtIndex:i]];
+		}
+		
+		[m_db executeUpdate:tempsql withArgumentsInArray:valArray];
+		if([m_db hadError])
+		{
+			return NO;
+		}
+	    return YES;
+}
+
+- (BOOL)deleteTable:(NSString *)tableName :(ThinkMail_Database*)m_db
+{
+		[m_db executeUpdate: [NSString stringWithFormat:@"DELETE FROM %@", tableName]];
+		if ([m_db hadError]) {
+			return NO;
+		}
+		else{
+			return YES;
+		}
+}
+
+-(BOOL)createTable:(NSString*)sql :(ThinkMail_Database*)db{
+	if (![db open]) {
+		[db open];
+	}
+		[db executeUpdate:sql];
+		if([db hadError])
+		{
+			return NO;
+		
+		}
+		return YES;
+}
+
+
+-(BOOL) MakeAccountDBIsExistAndOpen:(ThinkMail_Database*)db
+{
+	if(![db open]){
+		return NO;
+	}
+	else{
+		@try {
+			[self CreateMessageTable:db];
+			[self CreateFolderTable:db];
+			[self CreateAttachTable:db];
+			[self CreateMessageInfoTable:db];
+		}
+		@catch (NSException *exception) {
+			return NO;
+		}
+		return YES;
+	}
+}
+
+
+#pragma mark -  表操作
+-(BOOL)deleteTableWithAccount:(NSString *)account{
+	ThinkMail_Database*  m_db = [self getDbWithAccount:account];
+	BOOL success = YES;
+	if (![self deleteTable:Table_message :m_db]) {
+		success = NO;
+		NSLog(@"delete table_Message fail!");
+	}
+	
+	if (![self deleteTable:Table_folder :m_db]) {
+		success = NO;
+		NSLog(@"delete table_Message fail!");
+	}
+	
+	if (![self deleteTable:Table_attachment:m_db]) {
+		success = NO;
+		NSLog(@"delete table_Message fail!");
+	}
+	
+	if (![self deleteTable:Table_messageInfo:m_db]) {
+		success = NO;
+		NSLog(@"delete table_Message fail!");
+	}
+	NSString *filePath=@"";
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+	filePath=[paths objectAtIndex:0];
+	[self AddSkipBackupAttributeToFilePath:filePath];
+	
+	NSMutableString * aTPath=[NSMutableString stringWithString:filePath];
+	[aTPath appendString:@"/"];
+	NSMutableString * tempPath =[NSMutableString stringWithString:aTPath];
+	
+	NSFileManager *fileManager = [NSFileManager defaultManager];
+	[tempPath appendString:[NSString stringWithFormat:@"%@/",account]];
+	NSError *error = nil;
+	[fileManager removeItemAtPath:tempPath error:&error];
+
+	if (error) {
+		return NO;
+	}
+	return YES;
+}
+
+
+//创建邮件表
+-(BOOL)CreateMessageTable:(ThinkMail_Database*)db
+{
+    NSString *sql = [NSString stringWithFormat:@"CREATE TABLE IF NOT EXISTS %@ (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, mid text,fid text, mailSession text, size text, sendDate text,  read number, starFlag number, receiveDate text, modifyDate text, taskDate text, priority text, color text, denyForward text, antivirusStatus text, rcptFlag text, attachmentNum text, mailNum text, meetingFlag text, mailFlag text, starType text, logoType text, billType text, billFlag text, securityLevel text, fromMail text, toMail text, subject text, summary text, auditStatus text ,remark1 varchar(255),remark2 varchar(255) ,remark3 varchar(255)) ",Table_message];
+	
+	return [self createTable:sql :db];
+	
+}
+
+//创建邮件详情表
+-(BOOL)CreateMessageInfoTable:(ThinkMail_Database*)db
+{
+    NSString *sql = [NSString stringWithFormat:@"CREATE TABLE IF NOT EXISTS %@ (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, omid text,account text, toMail text, cc text, requestReadReceipt number, subject text, sendDate number, priority number, isHtml number, htmlContent text, denyForward number, sendWay number, headerRaw text, sessionMails text,remark1 varchar(255),remark2 varchar(255) ,remark3 varchar(255)) ",Table_messageInfo];
+	return [self createTable:sql:db];
+	
+}
+
+
+
+//文件夹表
+-(BOOL)CreateFolderTable:(ThinkMail_Database*)db
+{
+    NSString *sql = [NSString stringWithFormat:@"CREATE TABLE IF NOT EXISTS %@ (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, fid number,name text, type number, parentId number, folderPassFlag number, location number, hideFlag number, folderColor number, reserve number, pop3Flag number, keepPeriod number, stats number, summary text, auditStatus number, vipFlag number, messageCount number, messageSize number, unreadMessageCount number, unreadMessageSize number, remark1 varchar(255),remark2 varchar(255) ,remark3 varchar(255)) ",Table_folder];
+	
+	return [self createTable:sql:db];
+	
+}
+
+//附件表。
+-(BOOL)CreateAttachTable:(ThinkMail_Database*)db
+{
+    NSString *sql = [NSString stringWithFormat:@"CREATE TABLE IF NOT EXISTS %@ (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, mid text,fid number, sendDate number, receiveDate number, fromMail text, toMail text, subject text, attachHeadOffset number, attachOffset number, attachType number, attachName text, attachSize number, attachRealSize number, attachContentType text, encode text, remark1 varchar(255),remark2 varchar(255) ,remark3 varchar(255)) ",Table_attachment];
+	
+	return [self createTable:sql:db];
+	
+}
+
+@end

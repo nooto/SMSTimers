@@ -1,0 +1,19 @@
+//
+//  ThinkMail_messageInfo.h
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-21.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "ThinkMail_DBConfig.h"
+#import "ThinkMail_DataModel.h"
+#import "ThinkMailDictionary.h"
+@interface ThinkMail_CDBConfig (ThinkMail_messageinfo)
+-(void)insertMessageinfo:(TKResponsedModel_MessageInfo*)message ToAccount:(NSString*)account;
+
+//查询  帐号下 对应文件夹的 所有邮件。
+-(TKResponsedModel_MessageInfo*)qureyMailMessageInfoWithMid:(NSString*)mid Account:(NSString*)account;
+-(NSMutableArray*)qureyMailMessageInfoWithCondition:(NSDictionary*)dic Account:(NSString*)account;
+@end

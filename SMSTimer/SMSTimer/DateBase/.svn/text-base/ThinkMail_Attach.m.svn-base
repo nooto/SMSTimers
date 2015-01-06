@@ -1,0 +1,103 @@
+//
+//  ThinkMail_Attach.m
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-15.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import "ThinkMail_Attach.h"
+#import "ThinkMailDictionary.h"
+#import "ThinkMail_DBConfig.h"
+
+@implementation ThinkMail_CDBConfig (TKAttachInfoObject)
+-(TKAttachInfoObject*)attatchFromResultset:(ThinkMail_ResultSet*)rs{
+	TKAttachInfoObject *item = [[TKAttachInfoObject alloc] init];
+	item.mid = [rs stringForColumn:@"mid"];
+	
+	item.fid = [rs intForColumn:@"fid"];
+
+	item.sendDate = [rs intForColumn:@"sendDate"];
+
+	item.receiveDate = [rs intForColumn:@"receiveDate"];
+
+	item.from = [rs stringForColumn:@"fromMail"];
+	
+	item.to = [rs stringForColumn:@"toMail"];
+
+	item.subject = [rs stringForColumn:@"subject"];
+
+	item.attachHeadOffset = [rs intForColumn:@"attachHeadOffset"];
+
+	item.attachOffset = [rs intForColumn:@"attachOffset"];
+	item.attachType = [rs stringForColumn:@"attachType"];
+
+	item.attachName = [rs stringForColumn:@"attachName"];
+
+	item.attachSize = [rs intForColumn:@"attachSize"];
+
+	item.attachRealSize = [rs intForColumn:@"attachRealSize"];
+
+	item.attachContentType = [rs stringForColumn:@"attachContentType"];
+	item.encode = [rs stringForColumn:@"encode"];
+
+
+	return item;
+}
+
+
+
+-(void)insertAttach:(TKAttachInfoObject*)attachInfo ToAccount:(NSString*)account{
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:m_db];
+	[m_db open];
+	NSDictionary *msgDict = [NSMutableDictionary CreateAttachDictionaryData:attachInfo];
+	
+	NSMutableDictionary *conditiondict = [[NSMutableDictionary alloc] init];
+	[conditiondict setValue:attachInfo.mid forKey:@"mid"];
+	
+	//检测是不是有了这个附件。
+	if ([self QueryAttachIsExistById:attachInfo.mid :m_db]) {
+		[self UpdateByTableName:msgDict
+					  condition:conditiondict
+					  tableName:Table_message
+							   :m_db];
+	}
+	else{
+		[self InsertIntoTableByName:msgDict tableName:Table_attachment:m_db];
+	}
+	[m_db close];
+}
+
+-(BOOL)QueryAttachIsExistById:(NSString*)mid :(ThinkMail_Database*)m_db{
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where mid=?",Table_attachment];
+    ThinkMail_ResultSet * rs=[m_db executeQuery:sql,mid];
+    if([rs next])
+    {
+        [rs close];
+        return YES;
+    }
+    
+    [rs close];
+	return NO;
+}
+
+-(NSMutableArray*)qureyAttachWithAccount:(NSString*)account mid:(NSString*)mid{
+	if( account == nil) return nil;
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[m_db open];
+	NSString *sql = [NSString stringWithFormat:@"select * from attachment where mid like '%%%@%%';",mid];
+	ThinkMail_ResultSet * rs=[m_db executeQuery:sql];
+	NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+	while([rs next])
+	{
+		TKAttachInfoObject *item = [self attatchFromResultset:rs];
+		[arrMessage addObject:item];
+	}
+	[rs close];
+	[m_db close];
+	return arrMessage;
+
+}
+
+@end

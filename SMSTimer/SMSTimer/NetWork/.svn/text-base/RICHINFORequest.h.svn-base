@@ -1,0 +1,155 @@
+//
+//  RICHINFORequest.h
+//  Fragment
+//
+//  Created by xiaogaochao on 13-5-14.
+//
+//
+
+#import <Foundation/Foundation.h>
+#import "RICHINFO_ydsw_activity.h"
+#import "RICHINFOCDBConfig.h"
+#import "RICHINFOActivityInfo.h"
+#import "RFConstants.h"
+#import "RFContact.h"
+#import "RICHINFORequestCtrl.h"
+/**
+ *  网络完成通知
+ *
+ *  @param requestType   0:查询。1新增，2修改，3取消活动，4接收，5拒绝，6删除
+ *
+ *  activityInfo :活动类型。
+ */
+typedef enum
+{
+	OPERATE_NO=-1,
+	OPERATE_Login_Calendar,
+
+	//日历操作
+	OPERATE_Add_Calendar,
+	OPERATE_Modify_Calendar,
+	OPERATE_Cancel_Calendar,
+	OPERATE_Delete_Calendar,
+	OPERATE_QUERY_Calendar,
+	OPERATE_QUERY_Calendar_View,
+	OPERATE_YqReject_Calendar,
+	OPERATE_YqAccept_Calendar,
+	OPERATE_Sync_Calendar,
+	OPERATE_YQ_Calendar,
+	OPERATE_INFO_Calendar,
+	OPERATE_Query_Free_SMS,
+	
+	//标签操作
+	OPERATE_QueryList_Label,
+	OPERATE_Add_Label,
+	OPERATE_Modify_Label,
+	OPERATE_Delete_Label,
+	OPERATE_CancelSubLabel_Label, //取消订阅
+	OPERATE_Cancel_Label_Share, //取消日历共享
+	OPERATE_QueryDetail_Label,
+	OPERATE_Share_Label,
+	
+	//消息盒子操作
+	OPERATE_QueryCount_Msg,
+	OPERATE_QueryList_Msg,
+	OPERATE_QueryDetail_Msg,
+	OPERATE_DeleteMsg_Msg,
+
+	
+	OPERATE_AddWhiteItem_Msg,
+	OPERATE_AddBlackItem_Msg,
+	OPERATE_GetNoItem_Msg,
+	OPERATE_GetWhiteItem_Msg,
+	OPERATE_GetBlackItem_Msg,
+
+	//联系人
+	OPERATE_QueryList_Contacor,
+	
+}ERequestType;
+
+
+@protocol RICHINFORequestCalendarDelegate<NSObject>
+-(void)NotifyFreshUI:(ERequestType)requestType activityInfo:(RICHINFOActivityInfo *)item descp:(NSString*)descp isSynState:(BOOL)isSuccess;
+@end
+
+
+@protocol RICHINFORequestMsgDelegate<NSObject>
+-(void)NotifyFreshUI:(ERequestType)requestType messageBoxInfo:(CMessageBoxInfo *)item isSynState:(BOOL)isSuccess;
+@end
+
+
+@protocol RICHINFORequestLabelDelegate<NSObject>
+-(void)NotifyFreshUI:(ERequestType)requestType labelInfo:(CLabelInfo *)item isSynState:(BOOL)isSuccess;
+@end
+
+
+@protocol RICHINFORequestContactorDelegate<NSObject>
+-(void)NotifyFreshUI:(ERequestType)requestType contacorIfo:(NSArray *)contactArray isSynState:(BOOL)isSuccess;
+@end
+
+@interface RICHINFORequest : NSObject<C139ActivityDelegate>{
+	NSString *yqORrejectType;
+}
+/*
+ //1新增，2修改，3取消活动，4接收，5拒绝，6删除
+ */
+@property(nonatomic,assign) id<RICHINFORequestCalendarDelegate> m_Calendar_delegate;
+@property(nonatomic,assign) id<RICHINFORequestLabelDelegate>    m_Label_delegate;
+@property(nonatomic,assign) id<RICHINFORequestMsgDelegate>      m_Msg_delegate;
+@property(nonatomic,assign) id<RICHINFORequestContactorDelegate>      m_Contacor_delegate;
+
+-(RICHINFORequest*) initWithDelegate:(id)delegate;
+
+//登录
+-(void)LoginRichinfoCalendar:(NSString*)account :(NSString*)pswd;
+
+//刷新。
+-(void)uploadFailedOpertaion;
+-(void)QueryActivityFromServer:(BOOL)isGetAll syn:(BOOL)isFromSyn;//表示来自同步
+
+-(void)QueryActivityView:(NSString*)beginDate toendDate:(NSString*)endDate;//表示来自同步
+
+//活动功能
+-(void)Add139ActivitySubmit:(RICHINFOActivityInfo*)info;
+-(void)Modify139ActivitySubmit:(RICHINFOActivityInfo*)info;
+-(void)cancel139ActivitySubmit:(RICHINFOActivityInfo*)info;
+-(void)Accept139ActivitySubmit:(RICHINFOActivityInfo*)info;
+-(void)Refuse139ActivitySubmit:(RICHINFOActivityInfo*)info;
+-(void)Delete139ActivitySubmit:(RICHINFOActivityInfo*)info;
+-(void)QueryActivityDetail:(RICHINFOActivityInfo*)info;
+
+-(void)SetCalendarRemind:(RICHINFOActivityInfo*)info;
+
+//发送同步联系人命令
+-(void)ContactSynToCloud:(NSMutableDictionary *)paramsDic;
+
+-(void)queryFreeSmsCount;
+
+//标签功能
+-(void)QueryCalendarlist;
+-(void)AddCalendarLabel:(CLabelInfo *)info;
+-(void)QueryCalendarLabel:(NSString*)actionType;
+-(void)ModifyCalendarLabel:(CLabelInfo *)info;
+-(void)DeleteCalendarLabel:(CLabelInfo *)info;
+-(void)GetDetailCalendarLabel:(CLabelInfo *)labelInfo;
+-(void)CancelSubscribeLabel:(CLabelInfo*)labelinfo;
+-(void)CancelLabelShare:(CLabelInfo*)labelinfo;
+
+//消息盒子功能
+-(void)QueryMsgListAtpage:(NSInteger)page numofPage:(NSInteger)num;
+-(void)QueryMessageDetail:(CMessageBoxInfo*)msgInfo;
+-(void)DeleteMessageInfo:(NSString*)msgID;
+-(void)Accept139ActivitySubmitWithMsgInfo:(CMessageBoxInfo*)msgInfo;
+-(void)Refuse139ActivitySubmitWithMessageInfo:(CMessageBoxInfo *)msgInfo;
+-(void)ProcessShareLabelInfo:(CMessageBoxInfo*)labelInfo actionTpe:(NSString*)actionType; //0:接受 1：拒绝 2：删除
+
+//
+-(void)AddBlackWhiteItem:(CMessageBoxInfo*)msgInfo type:(NSString *)type;//添加黑白名单 type:1 白名单 2 黑名单
+-(void)DelBlackWhiteItem:(CMessageBoxInfo*)msgInfo;//添加黑白名单
+-(void)GetBlackWhiteItem:(CMessageBoxInfo*)msgInfo;//添加黑白名单
+
+//通讯录功能
+-(void)QueryContatorAddressList;
+//-(void);
+-(void)releaseGlobalMemory;
+@end

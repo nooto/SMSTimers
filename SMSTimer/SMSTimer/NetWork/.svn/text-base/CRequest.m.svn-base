@@ -1,0 +1,1800 @@
+//
+//  RICHINFORequest.m
+//  Fragment
+//
+//  Created by xiaogaochao on 13-5-14.
+//
+//
+#import "RICHINFORequest.h"
+#import "RICHINFODictionary.h"
+#import "RICHINFO_ydsw_calendarlabel.h"
+#import "RICHINFO_ydsw_messagebox.h"
+#import "RFConstants.h"
+#import "RICHINFO_ydsw_attender.h"
+#import "RICHINFO_ydsw_InviteInfo.h"
+
+static NSRecursiveLock *secureLock = nil;
+
+NSString *modifing139ActivityID=@"";
+
+@interface RICHINFORequest (){
+	RICHINFOCDBConfig *db;
+	
+    //刷新机制使用。
+    NSString *servertime;//服务器时间
+    NSDate *lastupdateTime;
+    
+    NSInteger indexOfInvity;
+    
+    int page;
+    int MsgPage;
+    BOOL isGettingAll;
+	dispatch_queue_t    richinfo_RequestQueue;
+
+}
+
+@property(nonatomic, assign)      ERequestType requestType;
+@property(nonatomic, retain)      NSDate *lastupdateTime;
+@property(nonatomic, retain)      NSString *servertime;
+@property(nonatomic, retain)      NSMutableArray *arrAllInvitActivity;
+
+-(void)addNotificationByOffset:(int)offset title:(NSString*)title startdate:(NSDate*)start activityid:(NSString*)activityid;
+
+@end
+
+@implementation RICHINFORequest
+@synthesize m_Calendar_delegate, m_Label_delegate,m_Msg_delegate, m_Contacor_delegate;
+@synthesize requestType;
+@synthesize lastupdateTime, servertime;
+@synthesize arrAllInvitActivity;
+
+-(RICHINFORequest*) initWithDelegate:(id)delegate
+{
+	if ((self = [super init]))
+    {
+        self.requestType=OPERATE_NO;
+		self.m_Calendar_delegate = delegate;
+		self.m_Msg_delegate = delegate;
+		self.m_Label_delegate = delegate;
+		self.m_Contacor_delegate = delegate;
+        if(nil==secureLock)
+        {
+            secureLock = [[NSRecursiveLock alloc] init];
+        }
+		
+        db=[[RICHINFOCDBConfig alloc] init];
+        [db MakeDBIsExistAndOpen];
+		
+        arrAllInvitActivity = [[NSMutableArray alloc] initWithCapacity:1];
+        richinfo_RequestQueue = dispatch_queue_create("com.richinfo.activityQueue", NULL);
+		
+    }
+	return self;
+}
+
+-(void)dealloc
+{
+    [servertime release];
+    [lastupdateTime release];
+    [db release];
+    m_Label_delegate = nil;
+	m_Calendar_delegate = nil;
+	m_Msg_delegate = nil;
+	
+    if (richinfo_RequestQueue) {
+        dispatch_release(richinfo_RequestQueue);
+        richinfo_RequestQueue = 0x00;
+    }
+    
+    [arrAllInvitActivity release];
+    
+    [super dealloc];
+}
+
+#pragma mark - Class Function
+-(void)releaseGlobalMemory
+{
+    if(nil!=secureLock)
+    {
+        [secureLock release];
+        secureLock=nil;
+    }
+}
+
+-(void)addNotificationByOffset:(int)offset title:(NSString*)title startdate:(NSDate*)start activityid:(NSString*)activityid
+{
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *comps=[[[NSDateComponents alloc] init] autorelease];
+    
+    if(offset==0)//表示活动发生时
+    {
+        [comps setSecond:-2];
+    }
+    else if(offset<60)//分钟
+    {
+        [comps setMinute:-offset];
+    }
+    else if(offset<1440)//小时
+    {
+        int hour=offset/60;
+        int minute=offset%60;
+        [comps setHour:-hour];
+        [comps setMinute:-minute];
+    }
+    else
+    {
+        int day=offset/1440;//天数
+        int minute=offset%1440;
+        int hour=minute/60;//小时
+        minute=minute%60;
+        [comps setDay:-day];
+        [comps setHour:-hour];
+        [comps setMinute:-minute];
+    }
+    
+    //计算提醒时间
+    NSDate *remindDate = [calendar dateByAddingComponents:comps toDate:start options:0];
+    //提醒时间与现在时间比较，如果过了提醒时间则不提醒
+    NSComparisonResult result=[remindDate compare:[NSDate date]];
+    if(result==NSOrderedDescending)
+    {
+//        LocalNotificationManage *notificationManage=[LocalNotificationManage sharedInstance];
+//        [notificationManage addOneLocalNotification:title activityid:activityid remindtime:remindDate starttime:start];
+    }
+}
+
+-(void)LoginRichinfoCalendar:(NSString*)account :(NSString*)pswd{
+    dispatch_async(richinfo_RequestQueue, ^(){
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl LoginCalendarWithAccount:account andPassword:pswd delegate:self];
+	});
+	
+}
+
+-(void)NoticeLoginFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender{
+	dispatch_async(dispatch_get_main_queue(), ^(){
+		if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI:activityInfo: descp: isSynState:)])
+		{
+			BOOL success = YES;
+			if (state == RESULT_OK) {
+				success = YES;
+			}
+			else{
+				success = NO;
+			}
+			[m_Calendar_delegate NotifyFreshUI:OPERATE_Login_Calendar activityInfo:nil descp:@""isSynState:success];
+		}
+	});
+}
+
+#pragma mark - Activity
+/*
+ */
+-(void)QueryActivityDetail:(RICHINFOActivityInfo*)info
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+	dispatch_async(richinfo_RequestQueue, ^(){
+
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl GetInfo139Activity:info delegate:self];
+	});
+	
+}
+
+-(void) NoticeGetInfo139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender
+{
+    if(state==RESULT_OK)
+    {
+        NSString *activityID=acti.activityID;
+
+        //查询到了 邀请活动的详情。更新 活动表中数据。
+        NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryData:acti];
+        
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:activityID forKey:@"ciid"];
+        [db UpdateByTableName:dbDic condition:dicCondition tableName:@"ydsw_activity"];
+        
+        //插入邀请人信息到inviteInfo表中。
+        for (NSInteger i = 0; i< [acti.arrInviteInfo count]; i++) {
+            InviteInfo * item = (InviteInfo*)[acti.arrInviteInfo objectAtIndex:i];
+            
+            InviteInfo *hasInfo = nil;
+            hasInfo = [db QueryFromInviteInfoTableWithSeqno:activityID :item.recEmail];
+            
+            if (hasInfo == nil) {
+                NSMutableDictionary *infoDict = [NSMutableDictionary CreateDictionaryDataByInviteInfo:item];
+                [infoDict setObject:activityID forKey:@"seqNo"];
+                [db InsertIntoTableByName:infoDict tableName:@"ydsw_InviteInfo"];
+            }
+            else{
+                
+                NSMutableDictionary *infoDict = [NSMutableDictionary CreateDictionaryDataByInviteInfo:item];
+                [infoDict setObject:activityID forKey:@"seqNo"];
+                
+                NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+                [dicCondition setObject:activityID forKey:@"seqno"];
+                [dicCondition setObject:item.recEmail forKey:@"recEmail"];
+                
+                [db UpdateByTableName:infoDict condition:dicCondition tableName:@"ydsw_InviteInfo"];
+            }
+        }
+    }
+	
+	dispatch_async(dispatch_get_main_queue(), ^(){
+		
+		if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI:activityInfo: descp: isSynState:)])
+		{
+			[m_Calendar_delegate NotifyFreshUI:OPERATE_INFO_Calendar activityInfo:acti descp:@"" isSynState:YES];
+		}
+	});
+
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+-(void)ContactSynToCloud:(NSMutableDictionary *)paramsDic{
+    if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    
+    dispatch_async(richinfo_RequestQueue, ^(){
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl ContactSynToCloud:paramsDic];
+    });
+}
+
+-(void)SetCalendarRemind:(RICHINFOActivityInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	
+	dispatch_async(richinfo_RequestQueue, ^(){
+		
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl setCalendarRemin:info delegate:self];
+	});
+}
+-(void)NoticeSetRemindActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender{
+	if (state == RESULT_OK) {
+	}
+}
+
+
+
+-(void)queryFreeSmsCount{
+    if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    
+    dispatch_async(richinfo_RequestQueue, ^(){
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl queryFreeSMSCountDeleagte:self];
+    });
+}
+
+-(void)NoticeQueryFreeSmsCountFinish:(int)state desc:(NSString *)freeinfo sendCount:(NSString *)sendCount sender:(id)sender{
+	if (state == RESULT_OK) {
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			
+		if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI:activityInfo: descp: isSynState:)])
+			{
+				[m_Calendar_delegate NotifyFreshUI:OPERATE_Query_Free_SMS activityInfo:nil descp:sendCount isSynState:YES];
+			}
+		});
+
+	}
+}
+
+/***************************************************************************************************
+ *新增活动提交服务器
+ */
+-(void)Add139ActivitySubmit:(RICHINFOActivityInfo*)info
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+		
+	if ([db QueryActivityIsExistById:info.activityID]) {
+		return;
+	}
+	NSString *activityID=info.activityID;
+	NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryData:info];//请求数据dic
+		
+	[dbDic setValue:activityID forKey:@"ciid"];//开始活动id为本地的
+	[dbDic setValue:@"1" forKey:@"optflag"];//表示此活动为增加
+	[dbDic setValue:info.authAccount.length > 0? info.authAccount :[RICHINFO_UserInfo sharedInstance].strAccount forKey:@"account"];//创建者账号
+		
+	[db InsertIntoTableByName:dbDic tableName:@"ydsw_activity"];//活动插入活动表
+	
+	//如果有提醒设置，则增加本地提醒功能
+	int minute=[info.offset intValue];
+	if(minute>=0)
+	{
+		[self addNotificationByOffset:minute title:info.summary startdate:info.startDate activityid:activityID];
+	}
+	
+    dispatch_async(richinfo_RequestQueue, ^(){
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl Add139Activity:info delegate:self];
+		
+    });
+}
+
+-(void)NoticeAdd139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti newid:(NSString *)nid sender:(id)sender
+{
+    if(state==RESULT_OK)
+    {
+        if(nil!=nid && [nid length])
+        {
+            //设置
+            NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+            [activityDicData setValue:nid forKey:@"ciid"];
+            [activityDicData setValue:@"0" forKey:@"optflag"];
+			
+            //条件
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setValue:acti.activityID forKey:@"ciid"];
+            [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];
+
+			dispatch_async(dispatch_get_main_queue(), ^(){
+
+				if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI:activityInfo:  descp:  isSynState:)])
+				{
+					[m_Calendar_delegate NotifyFreshUI:OPERATE_Add_Calendar activityInfo:acti descp:@"" isSynState:YES];
+				}
+			});
+			
+        }
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+
+/*******************************************************************************************************************************************
+ *修改本地活动，修改服务器活动提交服务器
+ */
+-(void)Modify139ActivitySubmit:(RICHINFOActivityInfo*)info
+{
+//    dispatch_async(richinfo_RequestQueue, ^(){
+
+    NSString *activityID=info.activityID;
+    BOOL isAdd=NO;
+    NSRange pos = [activityID rangeOfString:@"local_id"];//活动id中有local_id表示本地活动
+    if(pos.length>0)
+    {
+        isAdd=YES;
+    }
+	
+	NSMutableDictionary *requestDic=[NSMutableDictionary CreateDictionaryData:info];
+    
+    //新增没有成功的活动，先要取消提醒功能，再增加新的提醒
+//    LocalNotificationManage *notificationManage=[LocalNotificationManage sharedInstance];
+//    [notificationManage cancelLocalNotification:activityID];//取消活动
+//    int minute=[info.offset intValue];
+//    if(minute>=0)
+//    {
+//        [self addNotificationByOffset:minute title:info.summary startdate:info.startDate activityid:activityID];
+//    }
+    
+//    RICHINFO_UserInfo *user=[RICHINFO_UserInfo sharedInstance];
+    if(isAdd)//表示修改的是本地活动,实为新增活动
+    {
+        //更新本地活动表
+        NSMutableDictionary *dbDic=[NSMutableDictionary dictionaryWithDictionary:requestDic];
+        [dbDic setValue:@"1" forKey:@"status"];//创建就确定
+        [dbDic setValue:activityID forKey:@"ciid"];//开始活动id为本地的
+        [dbDic setValue:@"1" forKey:@"optflag"];
+        
+		[dbDic setValue:info.authAccount.length > 0? info.authAccount :[RICHINFO_UserInfo sharedInstance].strAccount forKey:@"account"];//创建者账号
+  
+		
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setValue:activityID forKey:@"ciid"];
+        BOOL isUpdateSuccess=[db UpdateByTableName:dbDic condition:dicCondition tableName:@"ydsw_activity"];
+        
+		if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+		{
+			[m_Calendar_delegate NotifyFreshUI:OPERATE_Add_Calendar activityInfo:info descp:@"" isSynState:YES];
+		}
+		
+		dispatch_async(richinfo_RequestQueue, ^(){
+
+        if(isUpdateSuccess)//此活动没请求并且更新成功
+        {
+            C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+            [c139ActivityCtrl Add139Activity:info delegate:self];
+        }
+		});
+
+    }
+    else
+    {
+		
+        NSMutableDictionary *dbDic=[NSMutableDictionary dictionaryWithDictionary:requestDic];
+        [dbDic setValue:@"1" forKey:@"status"];//创建就确定
+        [dbDic setValue:@"2" forKey:@"optflag"]; //修改。。
+        [dbDic setValue:activityID forKey:@"ciid"];
+        
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setValue:activityID forKey:@"ciid"];
+        [db UpdateByTableName:dbDic condition:dicCondition tableName:@"ydsw_activity"];
+        
+		
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+			{
+				[m_Calendar_delegate NotifyFreshUI:OPERATE_Add_Calendar activityInfo:info descp:@""isSynState:YES];
+			}
+		});
+		
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl Update139Activity:info delegate:self];
+    }
+        
+    
+}
+
+-(void)NoticeUpdate139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender
+{
+    if(state==RESULT_OK)
+    {
+        NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+        [activityDicData setValue:@"0" forKey:@"optflag"];
+        //条件
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setValue:acti.activityID forKey:@"ciid"];
+        [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+
+/*******************************************************************************************************************************************
+ *取消活动
+ */
+-(void)cancel139ActivitySubmit:(RICHINFOActivityInfo*)info
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+
+    BOOL isLocal=NO;
+    NSString *activityID=info.activityID;
+    NSRange pos = [activityID rangeOfString:@"local_id"];//活动id中有local_id表示本地活动
+    if(pos.length>0)
+        isLocal=YES;
+    
+    if(isLocal)//表示取消的是本地活动
+    {
+        //更新本地活动表
+        NSMutableDictionary *dbDic=[NSMutableDictionary dictionary];
+        [dbDic setValue:@"2" forKey:@"status"];//为取消状态
+        [dbDic setValue:@"0" forKey:@"optflag"];//表示取消操作
+		[dbDic setValue:info.authAccount.length > 0? info.authAccount :[RICHINFO_UserInfo sharedInstance].strAccount forKey:@"account"];//创建者账号
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setValue:activityID forKey:@"ciid"];
+        [db UpdateByTableName:dbDic condition:dicCondition tableName:@"ydsw_activity"];
+        
+		if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+		{
+			[m_Calendar_delegate NotifyFreshUI:OPERATE_Modify_Calendar activityInfo:nil  descp:@"" isSynState:YES];
+		}
+
+    }
+    else
+    {
+        NSMutableDictionary *dbDic=[NSMutableDictionary dictionary];
+        [dbDic setValue:@"2" forKey:@"status"];
+        [dbDic setValue:@"3" forKey:@"optflag"];
+        
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setValue:activityID forKey:@"ciid"];
+        [db UpdateByTableName:dbDic condition:dicCondition tableName:@"ydsw_activity"];
+        
+		dispatch_async(richinfo_RequestQueue, ^(){
+			C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+			[c139ActivityCtrl Cancel139Activity:info delegate:self];
+		});
+
+    }
+        
+}
+
+-(void)NoticeCancel139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender
+{
+    if(state==RESULT_OK)
+    {
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:acti.activityID forKey:@"ciid"];
+        [db DeleteByTableName:dicCondition tableName:@"ydsw_activity"];
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+/***************************************************************************************************************************************
+ *接受邀请
+ */
+-(void)Accept139ActivitySubmit:(RICHINFOActivityInfo*)info
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+    if(nil!=info)
+    {
+        NSString *activityID=info.activityID;
+        //邀请人接受时要设置提醒
+        int offset = [info.offset intValue];
+        if(offset>=0)
+        {
+            [self addNotificationByOffset:offset title:info.summary startdate:info.startDate activityid:activityID];
+        }
+        
+        NSMutableDictionary *activityDicData=[NSMutableDictionary dictionary];
+        [activityDicData setValue:@"4" forKey:@"optflag"];
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setValue:activityID forKey:@"ciid"];
+        [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];//只要一按就将optflag改成4表示接受，如果同步不成功，记录下来
+        
+        NSMutableDictionary *attenderDicData = [NSMutableDictionary dictionary];
+        [attenderDicData setValue:@"1" forKey:@"astatus"];//修改状态为1表示接受活动
+        [db UpdateByTableName:attenderDicData condition:dicCondition tableName:@"ydsw_attender"];
+		
+		dispatch_async(richinfo_RequestQueue, ^(){
+	        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+    	    [c139ActivityCtrl YqOrReject139Activity:@"参加" actiId:info.activityID type:@"0" delegate:self];
+		
+		});
+
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			//只有待处理的活动才有接受项，通知界面刷新
+			if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+			{
+				[m_Calendar_delegate NotifyFreshUI:OPERATE_Cancel_Calendar activityInfo:info descp:@""isSynState:YES];
+			}
+		});
+
+    }
+}
+
+//拒绝邀请
+-(void)Refuse139ActivitySubmit:(RICHINFOActivityInfo*)info
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+		if(nil!=info)
+		{
+			NSString *activityID=info.activityID;
+			//拒绝时要关闭本地提醒
+	//        LocalNotificationManage *notificationManage=[LocalNotificationManage sharedInstance];
+	//        [notificationManage cancelLocalNotification:activityID];//取消活动
+			
+			NSMutableDictionary *activityDicData=[NSMutableDictionary dictionary];
+			[activityDicData setObject:@"5" forKey:@"optflag"];
+			NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+			[dicCondition setObject:activityID forKey:@"ciid"];
+			[db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];//只要一按就将optflag改成5表示拒绝，如果同步不成功，记录下来
+			
+			NSMutableDictionary *attenderDicData = [NSMutableDictionary dictionary];
+			[attenderDicData setObject:@"2" forKey:@"astatus"];//修改状态为2表示拒绝活动
+			[db UpdateByTableName:attenderDicData condition:dicCondition tableName:@"ydsw_attender"];
+
+			dispatch_async(richinfo_RequestQueue, ^(){
+				C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+				NSString *seqno = info.activityID;
+				[c139ActivityCtrl YqOrReject139Activity:@"不想参加" actiId:seqno type:@"1" delegate:self];
+			});
+
+			dispatch_async(dispatch_get_main_queue(), ^(){
+
+				//通知界面刷新
+				if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+				{
+					[m_Calendar_delegate NotifyFreshUI:OPERATE_YqReject_Calendar activityInfo:nil descp:@"" isSynState:YES];
+				}
+			});
+		}
+}
+
+-(void)NoticeYqReject139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender
+{
+    if(state==RESULT_OK)
+    {
+        //普通
+        if (acti != nil) {
+            NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+            [activityDicData setObject:@"0" forKey:@"optflag"];
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:acti.activityID forKey:@"ciid"];
+            [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];//将optflag恢复为0，表示同步成功
+        }
+        //消息盒子
+        else{
+            NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+            [activityDicData setObject:@"0" forKey:@"optflag"];
+            [activityDicData setObject:@"1" forKey:@"status"];
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:(desc.length > 0 ? desc : @"") forKey:@"actiSeqNo"];
+            [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_messagebox"];//将optflag恢复为0，表示同步成功
+			
+			dispatch_async(dispatch_get_main_queue(), ^(){
+				if (m_Msg_delegate) {
+					[m_Msg_delegate NotifyFreshUI:1 messageBoxInfo:Nil isSynState:YES];
+//					[m_Msg_delegate NotifyFreshUI:OPERATE_YqAccept_Calendar messageBoxInfo:nil isSynState:YES];
+				}
+			});
+        }
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+/*******************************************************************************************************************************************
+ *删除活动
+ */
+-(void)Delete139ActivitySubmit:(RICHINFOActivityInfo*)info
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    if(info!=nil)
+    {
+        NSString *activityID=info.activityID;
+            NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+            [activityDicData setObject:@"6" forKey:@"optflag"];
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:activityID forKey:@"ciid"];
+            [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];//将optflag改成6表示删除，如果同步不成功，记录下来
+        
+		dispatch_async(richinfo_RequestQueue, ^(){
+
+            C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+            [c139ActivityCtrl Delete139Activity:info delegate:self];
+		});
+    }
+}
+
+
+-(void)NoticeDelete139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender
+{
+    if(state==RESULT_OK)
+    {
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:acti.activityID forKey:@"ciid"];
+        [db DeleteByTableName:dicCondition tableName:@"ydsw_activity"];
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+#pragma mark - Calendar Label Notify. 标签功能。
+/*******************************************************************************************************************************************
+//查询标签列表。。
+ */
+-(void)QueryCalendarlist{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+    dispatch_async(richinfo_RequestQueue, ^(){
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl QueryCalendarLabel:@"0" delegate:self];
+	});
+    
+}
+
+-(void) NoticeQueryCalendarLabelFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender{
+    int count=[resultDict count];
+	if (count >0 ) {
+		[db DeleteAllByTableName:@"ydsw_calendarlabel"];
+	}
+	
+    for(int index=0;index<count;index++)
+    {
+        CLabelInfo *item= [resultDict objectAtIndex:index];
+        
+        NSString *optflag =[db QueryOptFlagFromCalendarTable:item.seqNo];
+        if(optflag==nil)//表示数据库中没有此活动，插入数据库
+        {
+            //标签插入活动表
+            NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryDataBylabel:item];
+            [dbDic setObject:@"0" forKey:@"optflag"];
+            [db InsertIntoTableByName:dbDic tableName:@"ydsw_calendarlabel"];
+        }
+        else if([optflag isEqualToString:@"0"])//表示数据库有此活动，则更新
+        {
+            //更新活动表
+            NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryDataBylabel:item];
+            [dbDic setObject:@"0" forKey:@"optflag"];
+            
+            NSMutableDictionary *conditionDic=[NSMutableDictionary dictionary];
+            [conditionDic setObject:item.seqNo forKey:@"seqNo"];
+            
+            [db UpdateByTableName:dbDic condition:conditionDic tableName:@"ydsw_calendarlabel"];
+        }
+    }
+	
+	dispatch_async(dispatch_get_main_queue(), ^(){
+//		[RICHINFO_UserInfo sharedInstance].isRequestLabelList = YES;
+		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+			[m_Label_delegate NotifyFreshUI:OPERATE_QueryList_Label labelInfo:Nil isSynState:YES];
+		}
+	});
+
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+/*******************************************************************************************************************************************
+ *查询标签
+ */
+-(void)QueryCalendarLabel:(NSString *)actionType{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl QueryCalendarLabel:actionType delegate:self];
+   });
+}
+
+/*******************************************************************************************************************************************
+ *新增标签
+ */
+-(void)AddCalendarLabel:(CLabelInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	
+
+    if (info != nil) {
+        //活动插入活动表  optflag 字段表示客户端对活动的修改操作，0表示成功操作。1新增，2修改，3删除
+		if ([db QueryLabelIsExistById:info.seqNo]) {
+			return;
+		}
+        NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryDataBylabel:info];
+        [dbDic setObject:@"1" forKey:@"optflag"];
+        [db InsertIntoTableByName:dbDic tableName:@"ydsw_calendarlabel"];		
+		dispatch_async(richinfo_RequestQueue, ^(){
+			C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+			[c139ActivityCtrl AddCalendarLabel:info delegate:self];
+		});
+    }
+}
+
+-(void) NoticeAddCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender{
+    if(state==RESULT_OK)
+    {
+        //更新数据表。
+        if (labelInfo != nil) {
+            //设置
+            NSMutableDictionary *labelDicData = [NSMutableDictionary dictionary];
+            [labelDicData setObject:desc forKey:@"seqNo"];
+            [labelDicData setObject:@"0" forKey:@"optflag"];
+            
+            //条件
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:labelInfo.seqNo forKey:@"seqNo"];
+            [db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+        }
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+			//成功
+			if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+				
+				[m_Label_delegate NotifyFreshUI:OPERATE_Add_Label labelInfo:labelInfo isSynState:YES];
+			}
+		});
+
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			
+			//成功
+			if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+				
+				[m_Label_delegate NotifyFreshUI:OPERATE_NO labelInfo:labelInfo isSynState:YES];
+			}
+		});
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+/*******************************************************************************************************************************************
+ *修改标签
+ */
+-(void)ModifyCalendarLabel:(CLabelInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	
+	
+    if (info != nil) {
+        //设置
+        NSMutableDictionary *labelDicData = [NSMutableDictionary CreateDictionaryDataBylabel:info];
+        [labelDicData setObject:@"2" forKey:@"optflag"];
+        
+        //条件
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:info.seqNo forKey:@"seqNo"];
+        
+        [db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+    }
+
+	
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl ModifyCalendarLabel:info delegate:self];
+    
+   });
+}
+
+-(void) NoticeModifyCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender{
+    if(state==RESULT_OK)
+    {
+        //更新数据表。
+        //设置
+        NSMutableDictionary *labelDicData = [NSMutableDictionary dictionary];
+        [labelDicData setObject:@"0" forKey:@"optflag"];
+        
+        //条件
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:labelInfo.seqNo forKey:@"seqNo"];
+        [db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+        
+//		dispatch_async(dispatch_get_main_queue(), ^(){
+//
+//		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+//			
+//			[m_Label_delegate NotifyFreshUI:OPERATE_Modify_Label labelInfo:labelInfo isSynState:YES];
+//		}
+//		});
+
+    }
+    else{
+//		dispatch_async(dispatch_get_main_queue(), ^(){
+//
+//			if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+//				
+//				[m_Label_delegate NotifyFreshUI:OPERATE_Modify_Label labelInfo:labelInfo isSynState:NO];
+//			}
+//		});
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+/*******************************************************************************************************************************************
+ *删除标签
+ */
+-(void)DeleteCalendarLabel:(CLabelInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	if (info != nil) {
+        //更新数据表。
+        //设置
+        NSMutableDictionary *labelDicData = [NSMutableDictionary dictionary];
+        [labelDicData setObject:@"3" forKey:@"optflag"];
+        
+        //条件
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:info.seqNo forKey:@"seqNo"];
+        
+        [db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+		
+		//删除标签下的活动
+		[db DeleteActivityByLabeliD:info.seqNo];
+
+    }
+    dispatch_async(richinfo_RequestQueue, ^(){
+    
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl DeleteCalendarLabel:info delegate:self];
+    
+   });
+}
+
+-(void) NoticeDeleteCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender{
+
+    if(state==RESULT_OK)
+    {
+        //更新数据表。
+        if (labelInfo != nil) {
+            //条件
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:labelInfo.seqNo forKey:@"seqNo"];
+            [db DeleteByTableName:dicCondition tableName:@"ydsw_calendarlabel"];
+        }
+        
+//		dispatch_async(dispatch_get_main_queue(), ^(){
+//
+//		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+//			
+//			[m_Label_delegate NotifyFreshUI:OPERATE_Delete_Label labelInfo:labelInfo isSynState:YES];
+//		}
+//		});
+    }
+    else{
+//		dispatch_async(dispatch_get_main_queue(), ^(){
+//
+//		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+//			
+//			[m_Label_delegate NotifyFreshUI:OPERATE_Delete_Label labelInfo:labelInfo isSynState:NO];
+//		}
+//		});
+//
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//获取标签详情。。
+-(void)GetDetailCalendarLabel:(CLabelInfo *)labelInfo{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+
+//    if (labelInfo != nil) {
+//        //更新数据表。
+//        //设置
+//        NSMutableDictionary *labelDicData = [NSMutableDictionary dictionary];
+//        [labelDicData setObject:@"0" forKey:@"optflag"];
+//        
+//        //条件
+//        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+//        [dicCondition setObject:labelInfo.seqNo forKey:@"seqNo"];
+//        
+//        [db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+//    }
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl GetCalendarLabelDetail:labelInfo delegate:self];
+    
+   });
+}
+
+
+-(void) NoticeDetailCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender{
+   
+    if(state==RESULT_OK)
+    {
+        if (desc != nil) {
+            //更新数据表。
+            //设置
+            NSMutableDictionary *labelDicData = [NSMutableDictionary CreateDictionaryDataBylabel:labelInfo];
+            [labelDicData setObject:@"0" forKey:@"optflag"];
+            
+            //条件
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:desc forKey:@"seqNo"];
+            
+            [db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+        }
+
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+			
+			[m_Label_delegate NotifyFreshUI:OPERATE_QueryDetail_Label labelInfo:labelInfo isSynState:YES];
+		}
+		});
+
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+        //失败。
+		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+			
+			[m_Label_delegate NotifyFreshUI:OPERATE_QueryDetail_Label labelInfo:labelInfo isSynState:NO];
+		}
+		});
+    }
+}
+
+//取消订阅标签。
+-(void)CancelSubscribeLabel:(CLabelInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+		
+		if (info != nil) {
+			//更新数据表。
+			//设置
+			NSMutableDictionary *labelDicData = [NSMutableDictionary dictionary];
+			[labelDicData setObject:@"5" forKey:@"optflag"];
+			
+			//条件
+			NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+			[dicCondition setObject:info.seqNo forKey:@"seqNo"];
+			
+			[db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+			
+			//删除取消订阅的活动
+			[db DeleteActivityByLabeliD:info.seqNo];
+		}
+		
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl CancelSubscribeLabel:info delegate:self];
+		
+	});
+}
+
+-(void)NoticeCancelSubscribeLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender{
+	if(state==RESULT_OK)
+    {
+        //更新数据表。
+        if (labelInfo != nil) {
+            //条件
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:labelInfo.seqNo forKey:@"seqNo"];
+            [db DeleteByTableName:dicCondition tableName:@"ydsw_calendarlabel"];
+        }
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+			
+			[m_Label_delegate NotifyFreshUI:OPERATE_Cancel_Calendar labelInfo:labelInfo isSynState:YES];
+		}
+		});
+		
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+//		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+//			
+//			[m_Label_delegate NotifyFreshUI:OPERATE_Delete_Label labelInfo:labelInfo isSynState:NO];
+//		}
+		});
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//取消订阅标签。
+-(void)CancelLabelShare:(CLabelInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+		
+		if (info != nil) {
+			//更新数据表。
+			//设置
+			NSMutableDictionary *labelDicData = [NSMutableDictionary dictionary];
+			[labelDicData setObject:@"6" forKey:@"optflag"];
+			
+			//条件
+			NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+			[dicCondition setObject:info.seqNo forKey:@"seqNo"];
+			
+			[db UpdateByTableName:labelDicData condition:dicCondition tableName:@"ydsw_calendarlabel"];
+		}
+		
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl CancelLabelShare:info delegate:self];
+		
+	});
+}
+
+-(void)NoticeCancelLabelShareFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender{
+	if(state==RESULT_OK)
+    {
+        //更新数据表。
+        if (labelInfo != nil) {
+            //条件
+            NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+            [dicCondition setObject:labelInfo.seqNo forKey:@"seqNo"];
+            [db DeleteByTableName:dicCondition tableName:@"ydsw_calendarlabel"];
+        }
+        
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+			
+			[m_Label_delegate NotifyFreshUI:OPERATE_Cancel_Label_Share labelInfo:labelInfo isSynState:YES];
+		}
+		});
+		
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		if (m_Label_delegate && [m_Label_delegate respondsToSelector:@selector(NotifyFreshUI:labelInfo:isSynState:)]) {
+			
+			[m_Label_delegate NotifyFreshUI:OPERATE_Cancel_Label_Share labelInfo:labelInfo isSynState:NO];
+		}
+		});
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+
+
+#pragma mark - 消息盒子
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//查询消息盒子列表。
+-(void)QueryMsgListAtpage:(int)msgPage numofPage:(NSInteger)num
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	MsgPage = msgPage;
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl QueryMessageList:msgPage size:num delegate:self];
+	});
+    
+}
+
+-(void)NoticeQueryMsgListFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender{
+    int count=[resultDict count];
+	if (MsgPage == 1) {
+		[db DeleteAllByTableName:@"ydsw_messagebox"];
+	}
+
+    for(int index=0;index<count;index++)
+    {
+        CMessageBoxInfo *item= [resultDict objectAtIndex:index];
+        NSString *optflag = [db QueryOptFlagFromMessageboxTable:item.seqNo];
+        if(optflag==nil)//表示数据库中没有此活动，插入数据库
+        {
+            //标签插入活动表
+            NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryDataByMessageInfo:item];
+            [dbDic setObject:@"0" forKey:@"optflag"];
+            [db InsertIntoTableByName:dbDic tableName:@"ydsw_messagebox"];
+        }
+        else if([optflag isEqualToString:@"0"])//表示数据库有此活动，则更新
+        {
+            //更新活动表
+            NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryDataByMessageInfo:item];
+            [dbDic setObject:@"0" forKey:@"optflag"];
+            
+            NSMutableDictionary *conditionDic=[NSMutableDictionary dictionary];
+            [conditionDic setObject:item.seqNo forKey:@"seqNo"];
+            
+            [db UpdateByTableName:dbDic condition:conditionDic tableName:@"ydsw_messagebox"];
+        }
+    }
+    
+    //未获取完成
+//    if (count >= MaxMsgRequest) {
+//        MsgPage++;
+//        //继续消息列表。
+//        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+//        [c139ActivityCtrl QueryMessageList:MsgPage size:MaxMsgRequest delegate:self];
+//    }
+//    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+        //通知界面刷新
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			[m_Msg_delegate NotifyFreshUI:OPERATE_QueryList_Msg messageBoxInfo:nil isSynState:YES];
+		}
+		});
+        [C139ActivityCtrl Remove139ActivityCtrl:sender];
+//	}
+}
+
+-(void) NoticeQueryMsgCountFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)labelInfo sender:(id)sender{
+
+    if(state==RESULT_OK)
+    {
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+        //成功
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			[m_Msg_delegate NotifyFreshUI:OPERATE_QueryList_Msg messageBoxInfo:nil isSynState:YES];
+		}
+		});
+
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+			//失败
+			if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+				[m_Msg_delegate NotifyFreshUI:OPERATE_QueryList_Msg messageBoxInfo:nil isSynState:YES];
+				
+			}
+		});
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//消息盒子总接受邀请。
+-(void)Accept139ActivitySubmitWithMsgInfo:(CMessageBoxInfo *)msgInfo{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+		//同步消息盒子中活动信息
+		NSMutableDictionary *msgDicData=[NSMutableDictionary dictionary];
+		[msgDicData setObject:@"1" forKey:@"optflag"];
+		
+		NSMutableDictionary *msgdicCondition=[NSMutableDictionary dictionary];
+		[msgdicCondition setObject:msgInfo.seqNo forKey:@"seqNo"];
+		[db UpdateByTableName:msgDicData condition:msgdicCondition tableName:@"ydsw_messagebox"];
+		
+		//修改活动表中数据。。
+		//邀请人接受时要设置提醒
+		int offset = [msgInfo.actioffset intValue];
+		if(offset>=0)
+		{
+//			[self addNotificationByOffset:offset title:msgInfo.actiTitle startdate:msgInfo.actiStartDate activityid:msgInfo.actiSeqNo];
+		}
+
+		//
+		//只要一按就将optflag改成4表示接受，如果同步不成功，记录下来
+		NSMutableDictionary *activityDicData=[NSMutableDictionary dictionary];
+		[activityDicData setObject:@"4" forKey:@"optflag"];
+		
+		NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+		[dicCondition setObject:msgInfo.actiSeqNo forKey:@"ciid"];
+		[db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];
+		
+		//同步邀请表。
+		NSMutableDictionary *attenderDicData = [NSMutableDictionary dictionary];
+		[attenderDicData setObject:@"1" forKey:@"astatus"];//修改状态为1表示接受活动
+		[db UpdateByTableName:attenderDicData condition:dicCondition tableName:@"ydsw_attender"];
+		yqORrejectType = @"0";
+	dispatch_async(richinfo_RequestQueue, ^(){
+	
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl YqOrRejectMessage:msgInfo type:@"0" delegate:self];
+   });
+}
+
+//消息盒子中拒绝邀请。
+-(void)Refuse139ActivitySubmitWithMessageInfo:(CMessageBoxInfo *)msgInfo{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    
+        //修改消息盒子表。
+        NSMutableDictionary *msgDicData=[NSMutableDictionary dictionary];
+        [msgDicData setObject:@"2" forKey:@"optflag"];
+        NSMutableDictionary *msgdicCondition=[NSMutableDictionary dictionary];
+        [msgdicCondition setObject:msgInfo.seqNo forKey:@"seqNo"];
+        [db UpdateByTableName:msgDicData condition:msgdicCondition tableName:@"ydsw_messagebox"];
+
+        
+        NSString *activityID=msgInfo.actiSeqNo;
+        //拒绝时要关闭本地提醒
+//        LocalNotificationManage *notificationManage=[LocalNotificationManage sharedInstance];
+//        [notificationManage cancelLocalNotification:activityID];//取消活动
+    
+        //更新活动表。
+        NSMutableDictionary *activityDicData=[NSMutableDictionary dictionary];
+        [activityDicData setObject:@"5" forKey:@"optflag"];
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:activityID forKey:@"ciid"];
+        [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_activity"];//只要一按就将optflag改成5表示拒绝，如果同步不成功，记录下来
+        
+        //更新邀请表。
+        NSMutableDictionary *attenderDicData = [NSMutableDictionary dictionary];
+        [attenderDicData setObject:@"2" forKey:@"astatus"];//修改状态为2表示拒绝活动
+        [db UpdateByTableName:attenderDicData condition:dicCondition tableName:@"ydsw_attender"];
+		yqORrejectType = @"1";
+		dispatch_async(richinfo_RequestQueue, ^(){
+            C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+			[c139ActivityCtrl YqOrRejectMessage:msgInfo type:@"1" delegate:self];
+   		});
+    
+}
+
+-(void)NoticeYqORejectMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)labelInfo sender:(id)sender{
+    if(state==RESULT_OK)
+    {
+		 NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+		[activityDicData setObject:@"0" forKey:@"optflag"];
+		[activityDicData setObject:@"1" forKey:@"status"];
+		NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+		[dicCondition setObject:(desc.length > 0 ? desc : @"") forKey:@"actiSeqNo"];
+		
+		[db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_messagebox"];//将optflag恢复为0，表示同步成功
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			if (m_Msg_delegate) {
+				if ([yqORrejectType  isEqualToString:@"0"]) {
+					[m_Msg_delegate NotifyFreshUI:OPERATE_YqAccept_Calendar messageBoxInfo:labelInfo isSynState:YES];
+				}
+				else if ([yqORrejectType  isEqualToString:@"1"]){
+					[m_Msg_delegate NotifyFreshUI:OPERATE_YqReject_Calendar messageBoxInfo:labelInfo isSynState:YES];
+				}
+			}
+		});
+	}
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+	
+}
+
+
+/*******************************************************************************************************************************************
+ * 消息盒子中 标签共享 处理。。。
+ //actionType   0:接受 1：拒绝 2：删除
+ //optflag: 5：日历标签的共享接受 6：日历标签共享拒绝 7:删除 标签共享  （消息盒子中属于日历标签的处理））
+ */
+-(void)ProcessShareLabelInfo:(CMessageBoxInfo*)msgInfo actionTpe:(NSString*)actionType{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+	C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+	yqORrejectType = actionType;
+	[c139ActivityCtrl ProcessShareCalendarLabel:msgInfo.labelSeqNo type:actionType delegate:self];
+    
+   });
+}
+
+-(void) NoticeProcessShareLabelFinish:(int)state desc:(NSString *)desc acti:(NSString *)labelId sender:(id)sender{
+    if(state==RESULT_OK)
+    {
+		dispatch_async(dispatch_get_main_queue(), ^(){
+        //成功
+			if (m_Msg_delegate) {
+				if ([yqORrejectType  isEqualToString:@"0"]) {
+					[m_Msg_delegate NotifyFreshUI:OPERATE_YqAccept_Calendar messageBoxInfo:Nil isSynState:YES];
+				}
+				else if ([yqORrejectType  isEqualToString:@"1"]){
+					[m_Msg_delegate NotifyFreshUI:OPERATE_YqReject_Calendar messageBoxInfo:nil isSynState:YES];
+				}
+			}
+		});
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			//失败。
+			if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+				[m_Msg_delegate NotifyFreshUI:OPERATE_Share_Label messageBoxInfo:nil isSynState:YES];
+				
+			}
+		});
+    }
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//查看消息
+-(void)QueryMessageDetail:(CMessageBoxInfo *)info{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){		
+		NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+        [activityDicData setObject:info.seqNo forKey:@"seqNo"];
+        [activityDicData setObject:@"0" forKey:@"optflag"];
+		[activityDicData setObject:@"1" forKey:@"status"];
+
+        //条件
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:info.seqNo forKey:@"seqNo"];
+        [db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_messagebox"];
+		
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl QueryMessageDetail:info delegate:self];
+   });
+}
+
+-(void) NoticeQueryMsgDetailFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender{
+    if(state==RESULT_OK)
+    {
+		NSMutableDictionary *msgDicData=[NSMutableDictionary CreateDictionaryDataByMessageInfo:msgInfo];
+        [msgDicData setObject:desc forKey:@"seqNo"];
+        [msgDicData setObject:@"0" forKey:@"optflag"];
+		[msgDicData setObject:@"1" forKey:@"status"];
+
+        //条件
+        NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+        [dicCondition setObject:desc forKey:@"seqNo"];
+		
+        [db UpdateByTableName:msgDicData condition:dicCondition tableName:@"ydsw_messagebox"];
+		
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		//成功
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			[m_Msg_delegate NotifyFreshUI:OPERATE_QueryDetail_Msg messageBoxInfo:msgInfo isSynState:YES];
+			
+		}
+		});
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			//成功
+			if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+				[m_Msg_delegate NotifyFreshUI:OPERATE_QueryDetail_Msg messageBoxInfo:msgInfo isSynState:NO];
+				
+			}
+		});
+		
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//删除消息
+-(void)DeleteMessageInfo:(NSString *)msgID{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	
+	NSMutableDictionary *activityDicData = [NSMutableDictionary dictionary];
+	[activityDicData setObject:msgID forKey:@"seqNo"];
+	[activityDicData setObject:@"4" forKey:@"optflag"];
+	
+	//条件
+	NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+	[dicCondition setObject:msgID forKey:@"seqNo"];
+	
+	[db UpdateByTableName:activityDicData condition:dicCondition tableName:@"ydsw_messagebox"];
+
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl DeleteMessage:msgID delegate:self];
+   });
+}
+
+-(void) NoticeDeletMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)labelInfo sender:(id)sender{
+
+    if(state==RESULT_OK)
+    {
+		NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+		[dicCondition setObject:desc forKey:@"seqNo"];
+		[db DeleteByTableName:dicCondition tableName:@"ydsw_messagebox"];
+			
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		//成功
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			[m_Msg_delegate NotifyFreshUI:OPERATE_DeleteMsg_Msg messageBoxInfo:labelInfo isSynState:YES];
+		}
+		});
+		
+    }
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			[m_Msg_delegate NotifyFreshUI:OPERATE_DeleteMsg_Msg messageBoxInfo:nil isSynState:YES];
+			
+		}
+		});
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+-(void)AddBlackWhiteItem:(CMessageBoxInfo*)msgInfo type:(NSString *)type{//添加黑白名单
+    if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl AddBlackWhiteItem: msgInfo type:type delegate:self];
+    });
+}
+-(void)NoticeAddBlackWhiteItemMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender{
+	dispatch_async(dispatch_get_main_queue(), ^(){
+		
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			if ([desc isEqualToString:@"1"]) {
+				[m_Msg_delegate NotifyFreshUI:OPERATE_AddWhiteItem_Msg messageBoxInfo:nil isSynState:YES];
+			}
+			else if ([desc isEqualToString:@"2"]){
+				[m_Msg_delegate NotifyFreshUI:OPERATE_AddBlackItem_Msg messageBoxInfo:nil isSynState:YES];
+			}
+		}
+	});
+}
+
+-(void)DelBlackWhiteItem:(CMessageBoxInfo *)msgInfo{
+    if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl DelBlackWhiteItem: msgInfo.seqNo delegate:self];
+    });
+	
+}
+-(void)NoticeDelBlackWhiteItemMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender{
+	
+}
+
+//添加黑白名单{
+-(void)GetBlackWhiteItem:(CMessageBoxInfo*)msgInfo{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl GetBlackWhiteItem: msgInfo delegate:self];
+    });
+
+}
+-(void)NoticeGetBlackWhiteItemMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender{
+	dispatch_async(dispatch_get_main_queue(), ^(){
+		if (m_Msg_delegate && [m_Msg_delegate respondsToSelector:@selector(NotifyFreshUI:messageBoxInfo:isSynState:)]) {
+			if ([desc isEqualToString:@"0"]) {
+				[m_Msg_delegate NotifyFreshUI:OPERATE_GetNoItem_Msg messageBoxInfo:msgInfo isSynState:YES];
+			}
+			else if ([desc isEqualToString:@"1"]){
+				[m_Msg_delegate NotifyFreshUI:OPERATE_GetWhiteItem_Msg messageBoxInfo:msgInfo isSynState:YES];
+			}
+			else if ([desc isEqualToString:@"2"]){
+				[m_Msg_delegate NotifyFreshUI:OPERATE_GetBlackItem_Msg messageBoxInfo:msgInfo isSynState:YES];
+			}
+			
+		}
+	});
+}
+
+//
+
+/**
+ * 查询联系人
+ *
+ *  @param void
+ *
+ *  @return
+ */
+-(void)QueryContatorAddressList{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+    dispatch_async(richinfo_RequestQueue, ^(){
+		
+        C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+        [c139ActivityCtrl QueryContacotorsAddresList:self];
+	});
+
+}
+
+-(void)NoticeQueryContactorListFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender{
+	if(state==RESULT_OK)
+    {
+		
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			if (m_Contacor_delegate && [m_Contacor_delegate respondsToSelector:@selector(NotifyFreshUI:contacorIfo:isSynState:)]) {
+				[m_Contacor_delegate NotifyFreshUI:OPERATE_QueryList_Contacor contacorIfo:resultDict isSynState:YES];
+			}
+		});
+		
+    }
+	
+    else{
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			
+			if (m_Contacor_delegate && [m_Contacor_delegate respondsToSelector:@selector(NotifyFreshUI:contacorIfo:isSynState:)]) {
+				[m_Contacor_delegate NotifyFreshUI:OPERATE_QueryList_Contacor contacorIfo:nil isSynState:YES];
+			}
+		});
+    }
+    
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+	
+}
+
+
+#pragma mark - 刷新机制
+/*******************************************************************************************************************************************
+ *上传失败的操作。
+ */
+-(void)uploadFailedOpertaion
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+
+        NSArray *arrFailedActivity=[db QueryAllSynFailedActivity];//从数据库中查询上次操作失败的活动再次提交服务器
+        for(int indx=0;indx<[arrFailedActivity count];indx++)
+        {
+            RICHINFOActivityInfo *item=[arrFailedActivity objectAtIndex:indx];
+            
+            if([item.optFlag isEqualToString:@"1"] || [item.optFlag isEqualToString:@"2"])
+            {
+                [self Modify139ActivitySubmit:item];
+            }
+            else if([item.optFlag isEqualToString:@"3"])
+            {
+                [self cancel139ActivitySubmit:item];
+            }
+            else if([item.optFlag isEqualToString:@"4"])
+            {
+                [self Accept139ActivitySubmit:item];
+            }
+            else if([item.optFlag isEqualToString:@"5"])
+            {
+                [self Refuse139ActivitySubmit:item];
+            }
+            else if([item.optFlag isEqualToString:@"6"])
+            {
+                [self Delete139ActivitySubmit:item];
+            }
+        }
+        [arrFailedActivity release];
+        
+        
+        //失败的标签同步。
+        NSArray *arrFailelabel=[db QueryAllSynFailedCalendarLabel];//从数据库中查询上次操作失败的活动再次提交服务器
+        for(int indx=0;indx<[arrFailelabel count];indx++)
+        {
+			//optflag      字段表示客户端对活动的修改操作，0表示成功操作。1新增，2修改，3删除 4:查询详情  5:取消订阅  6:取消标签共享
+
+            CLabelInfo *item=[arrFailelabel objectAtIndex:indx];
+			if ([item.optflag isEqualToString:@"1"]) {
+				[self AddCalendarLabel:item];
+			}
+            else if([item.optflag isEqualToString:@"2"])
+            {
+                [self ModifyCalendarLabel:item];
+            }
+            else if([item.optflag isEqualToString:@"3"])
+            {
+                [self DeleteCalendarLabel:item];
+            }
+        }
+        [arrFailelabel release];
+        
+        //失败的消息盒子操作
+        NSArray *arrFailmsg=[db QueryAllSynFailedMessagebox];//从数据库中查询上次操作失败的活动再次提交服务器
+        for(int indx=0;indx<[arrFailmsg count];indx++)
+        {
+            CMessageBoxInfo *item=[arrFailmsg objectAtIndex:indx];
+            if([item.optflag isEqualToString:@"1"])
+            {
+                [self Accept139ActivitySubmitWithMsgInfo:item];
+            }
+            else if([item.optflag isEqualToString:@"2"])
+            {
+                [self Refuse139ActivitySubmitWithMessageInfo:item];
+            }
+			else if ([item.optflag isEqualToString:@"4"]){
+				[self DeleteMessageInfo:item.seqNo];
+			}
+        }
+        [arrFailmsg release];
+	 
+}
+
+-(void)QueryActivityView:(NSString*)beginDate toendDate:(NSString*)endDate{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	dispatch_async(richinfo_RequestQueue, ^(){
+
+		//actionType=0:表示查询月视图列表 actionType=1:表示查询周视图列表 actionType=2:表示查询日视图列表
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl Query139ActivityViewFrom:beginDate ToDate:endDate type:@"2" delegate:self];
+		
+	});
+}//表示来自同步
+
+-(void)Notice139ActivityViewFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender{
+	int count=[resultDict count];
+		[db MakeDBIsExistAndOpen];
+        for(int index=0;index<count;index++)
+        {
+            RICHINFOActivityInfo *item=[resultDict objectAtIndex:index];
+            
+            int offset = [item.offset intValue];
+            if(offset>=0)//有提醒设置
+            {
+                if([item.activityStatus isEqualToString:@"1"])//活动状态为确定
+                {
+                    [self addNotificationByOffset:offset title:item.summary startdate:item.startDate activityid:item.activityID];
+                }
+            }
+			
+//            //更新本地数据库
+            NSString *optflag =[db QueryOptFlagFromActivityTable:item.activityID];
+            if(optflag==nil)//表示数据库中没有此活动，插入数据库
+            {
+                //活动插入活动表
+                NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryData:item];
+                [dbDic setValue:@"0" forKey:@"optflag"];
+                [db InsertIntoTableByName:dbDic tableName:@"ydsw_activity"];
+            }
+            else if([optflag isEqualToString:@"0"])//表示数据库有此活动，则更新
+            {
+                //更新活动表
+                NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryData:item];
+                [dbDic setValue:@"0" forKey:@"optflag"];
+                NSMutableDictionary *conditionDic=[NSMutableDictionary dictionary];
+                [conditionDic setValue:item.activityID forKey:@"ciid"];
+                [db UpdateByTableName:dbDic condition:conditionDic tableName:@"ydsw_activity"];
+            }
+			
+        }
+		
+		dispatch_async(dispatch_get_main_queue(), ^(){
+			if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+			{
+				[m_Calendar_delegate NotifyFreshUI:OPERATE_QUERY_Calendar_View activityInfo:nil descp:@"" isSynState:YES];
+			}
+		});
+}
+
+
+/*******************************************************************************************************************************************
+ *查询 普通活动与 邀请活动信息。之后查询邀请活动详情。。
+ */
+-(void)QueryActivityFromServer:(BOOL)isGetAll syn:(BOOL)isFromSyn
+{
+	if ([RICHINFO_UserInfo sharedInstance].isLogin == NO)  return;
+	dispatch_async(richinfo_RequestQueue, ^(){
+		
+		isGettingAll=isGetAll;
+		page = 1;
+		C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+		[c139ActivityCtrl Query139Activity:page size:MaxRequest type:@"all" delegate:self];
+
+   });
+}
+//普通活动全量处理。。
+-(void)NoticeQuery139ActivityFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender
+{
+    C139ActivityCtrl *c139ActivityCtrl=(C139ActivityCtrl*)sender;
+    self.servertime=c139ActivityCtrl.m_serverTime;
+    [self handleData:resultDict withDataType:0];
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//普通活动增量更新。。。
+-(void)NoticeSync139ActivityFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender
+{
+    C139ActivityCtrl *c139ActivityCtrl=(C139ActivityCtrl*)sender;
+    self.servertime=c139ActivityCtrl.m_serverTime;
+    [self handleData:resultDict withDataType:0];
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//邀请活动处新。。。
+-(void)NoticeYq139ActivityFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender
+{
+    [self handleData:resultDict withDataType:1];
+    [C139ActivityCtrl Remove139ActivityCtrl:sender];
+}
+
+//datatype。  登录时获取到的数据类型。 0: 普通活动， 1：邀请活动， 2：标签列表。 3：消息盒子信息列表。 4 消息盒子详情查看。
+-(void)handleData:(NSArray*)resultDict withDataType:(NSInteger)dateType
+{
+    int count=[resultDict count];
+    NSDateFormatter *formatter = [[[NSDateFormatter alloc] init] autorelease];
+    [formatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];//24小时制
+    //与本地比较同步到数据库
+    NSDate *time = nil;
+    if (self.servertime == nil) {
+    	time= self.lastupdateTime;//服务器时间
+    }
+    else{
+        time=[formatter dateFromString:self.servertime];//服务器时间
+    }
+    
+    //第一次获取自己创建的活动时，要清数据库 获取全量
+    if( dateType == 0 && page==1 && isGettingAll)
+    {
+        [db MakeDBIsExistAndOpen];
+		//删除所有同步成功的数据。 同步服务器删除文件。
+		[db DeleteAllByTableName:@"ydsw_activity"];
+    }
+	RFUtility_LOG;
+
+    
+    //普通活动获取后插入数据库。
+    if (dateType == 0) {
+        for(int index=0;index<count;index++)
+        {
+            RICHINFOActivityInfo *item=[resultDict objectAtIndex:index];
+			
+//            int offset = [item.offset intValue];
+//            if(offset>=0)//有提醒设置
+//            {
+//                if([item.activityStatus isEqualToString:@"1"])//活动状态为确定
+//                {
+//                    [self addNotificationByOffset:offset title:item.summary startdate:item.startDate activityid:item.activityID];
+//                }
+//            }
+			
+            //更新本地数据库
+            NSString *optflag =[db QueryOptFlagFromActivityTable:item.activityID];
+            if(optflag==nil)//表示数据库中没有此活动，插入数据库
+            {
+                //活动插入活动表
+                NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryData:item];
+                [dbDic setValue:time forKey:@"dtaccept"];
+                [dbDic setValue:@"0" forKey:@"optflag"];
+                [dbDic setValue:item.activityID.length > 0? item.activityID:@"" forKey:@"ciid"];
+                [dbDic setValue:item.createrAccount.length > 0 ? item.createrAccount:@"" forKey:@"account"];
+                [db InsertIntoTableByName:dbDic tableName:@"ydsw_activity"];
+            }
+            else if([optflag isEqualToString:@"0"])//表示数据库有此活动，则更新
+            {
+                //更新活动表
+                NSMutableDictionary *dbDic=[NSMutableDictionary CreateDictionaryData:item];
+                [dbDic setValue:time forKey:@"dtaccept"];
+                [dbDic setValue:@"0" forKey:@"optflag"];
+
+                NSMutableDictionary *conditionDic=[NSMutableDictionary dictionary];
+                [conditionDic setValue:item.activityID forKey:@"ciid"];
+                
+                [db UpdateByTableName:dbDic condition:conditionDic tableName:@"ydsw_activity"];
+            }
+        }
+		RFUtility_LOG;
+
+        //未取完,继续获取普通活动
+        if (count >= MaxRequest) {
+            page++;
+			C139ActivityCtrl *c139ActivityCtrl=[C139ActivityCtrl GetC139ActivityCtrl];
+			[c139ActivityCtrl Query139Activity:page size:MaxRequest type:@"all" delegate:self];
+        }
+        else{
+			
+			dispatch_async(dispatch_get_main_queue(), ^(){
+				if(nil!=m_Calendar_delegate && [m_Calendar_delegate respondsToSelector:@selector(NotifyFreshUI: activityInfo: descp: isSynState:)])
+				{
+					[m_Calendar_delegate NotifyFreshUI:OPERATE_Sync_Calendar activityInfo:nil descp:@"" isSynState:YES];
+				}
+			});
+			return;
+        }
+    }
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+@end

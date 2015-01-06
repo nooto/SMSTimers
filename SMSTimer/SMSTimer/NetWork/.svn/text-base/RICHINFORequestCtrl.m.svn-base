@@ -1,0 +1,2493 @@
+
+//
+//  C139ActivityCtrl.m
+//  Fragment
+//
+//  Created by zhang on 13-5-13.
+//
+//
+#import "RICHINFORequestCtrl.h"
+#import "RICHINFOXmlCtrl.h"
+#import "RICHINFOCDBConfig.h"
+#import "RFConstants.h"
+#import "RICHINFO_ydsw_activity.h"
+//#import "RICHINFO_ydsw_attender.h"
+#import "RICHINFO_ydsw_calendarlabel.h"
+#import "RICHINFO_ydsw_messagebox.h"
+//#import "iClearConstants.h"
+//#import "CDBUserBind.h"
+#import "RFUtility.h"
+
+#define DOMAIN_139ACTIVITY @"smsrebuild1.mail.10086.cn"
+
+#define Add_139Activity @"?func=calendar:addCalendar&rnd=0.7511479727&sid="
+#define Update_139Activity @"?func=calendar:updateCalendar&rnd=0.7511479727&sid="
+
+
+//			                 ?func=calendar:cancelInvitedInfo&sid=%@&cguid=1347185988803
+#define Cancel_139Activity  @"%@?func=calendar:cancelInvitedInfo&sid=%@&cguid=1721103140665"
+#define Delete_139Activity @"?func=calendar:delCalendar&rnd=0.7511479727&sid="
+
+
+#define Query_139Activity @"?func=calendar:getCalendarListView&rnd=0.7511479727&sid="
+#define YqReject_139Activity @"?func=calendar:updateInviteStatus&rnd=0.7511479727&sid="
+#define Yq_139Activity @"?func=calendar:getCalendarInviteMessage&rnd=0.123456433&sid="
+#define Info_139Activity @"?func=calendar:getCalendar&rnd=0.123456433&sid="
+#define Contact_Sync @"http://g2.mail.10086.cn/addr/apiserver/iContactService.ashx?"
+
+
+//		  //http://IP:PORT/s?func=calendar:getCalendarView&sid=jAAiqdSzMxFqS&rnd=0.7511479727
+#define Query_139Activity_View @"%@?func=calendar:getCalendarView&sid=%@&rnd=1721103140665"
+
+//设置个性话提醒接口
+//http://smsrebuild0.mail.10086.cn/calendar/s?func=calendar:SetCalendarRemind&sid=MTM5MzM5Njg4OTAwMTY0NTIyMTA0NAAA000004&cguid=1624305212490
+#define Set_Calendar_Remind @"%@?func=calendar:SetCalendarRemind&sid=%@&rnd=0.7511479727"
+
+//#define LOGIN_VIRTUAL_139 @"http://mail.10086.cn/Login/VirtualDiskLogin.ashx"
+#define Sync_139Activity          @"%@?func=calendar:syncDebrisCalendars&sid=%@&rnd=0.123456433"
+
+//日历兑换 token URL
+#define LOGIN_VIRTUAL_139 @"http://mail.10086.cn/Login/CalendarLogin.ashx?token=%@&isRedirect=0&loginName=%@"
+
+//syncGetCalendars
+//日历标签查询。
+#define Query_CalendarLabels_139  @"%@?func=calendar:getLabels&sid=%@&cguid=1721103140665"
+#define Add_CalendarLabels_139    @"%@?func=calendar:addLabel&sid=%@&cguid=1721103140665"
+#define Modify_CalendarLabels_139 @"%@?func=calendar:updateLabel&sid=%@&cguid=1721103140665"
+#define Delete_CalendarLabels_139 @"%@?func=calendar:deleteLabel&sid=%@&cguid=1721103140665"
+#define Detail_CalendarLabels_139 @"%@?func=calendar:getLabelById&sid=%@&rnd=0.7511479727"
+#define Cancel_SubscribeLabel     @"%@?func=calendar:cancelSubscribeLabel&sid=%@&rnd=0.7511479727"
+#define Delete_Share_Label        @"%@?func=calendar:deleteLabelShare&sid=%@&rnd=0.7511479727"
+
+#define Query_Free_Sms_Count      @"%@?func=calendar:initCalendar&sid=%@&rnd=0.7511479727"
+
+#define Process_ShareCalendarLabel_139 @"%@?func=calendar:processShareLabelInfo&sid=%@&rnd=1601382570082"
+
+//消息盒子查询。
+#define QUERY_MessageCount_139   @"%@?func=calendar:getMessageCount&sid=%@&rnd=0.7511479"
+#define QUERY_MessageList_139    @"%@?func=calendar:getMessageList&sid=%@&rnd=0.7511479"
+#define QUERY_MessageDetail_139  @"%@?func=calendar:getMessageById&sid=%@&rnd=0.7511479"
+#define DELETE_Message_139       @"%@?func=calendar:delMessage&sid=%@&rnd=0.7511479"
+
+//黑白名单
+#define ADD_BlackWhite_139       @"%@?func=calendar:addBlackWhiteItem&sid=%@&rnd=0.7511479"
+#define DEL_BlackWhite_139       @"%@?func=calendar:delBlackWhiteItem&sid=%@&rnd=0.7511479"
+#define GET_BlackWhite_139       @"%@?func=calendar:getBlackWhiteItem&sid=%@&rnd=0.7511479"
+
+//查询联系人
+#define  QUERY_Contactors   @"http://smsrebuild1.mail.10086.cn/addrsvr/GetUserAddrJsonData?sid=%@&formattype=json&cguid=1555417010224"
+//#define  QUERY_Contactors @"http://addrapi.mail.10086.cn/GetUserAddrJsonData"
+
+@implementation C139ActivityCtrl
+
+@synthesize m_serverTime;
+
+#define ADDActivity @"add"
+#define UPDATEActivity @"update"
+#define CANCELActivity @"cancel"
+#define DELETEActivity @"delete"
+#define QUERYActivity @"query"
+#define YQREJECTActivity @"yqreject"
+#define SYNCActivity @"sync"
+#define LOGIN139 @"login"
+#define YQActivity @"yq"
+#define INFOActivity @"info"
+#define CALENDERLABEL @"calendarLabel"
+#define ADDLabel @"AddCalendarLabel"
+#define ModifyLabel @"ModifyCalendarLabel"
+#define DeleteLabel @"DeleteCalendarLabel"
+#define DetailLabel @"DetailCalendarLabel"
+#define PROCESSShareLabel @"ProcessShareCalendarLabel"
+
+#define NO_OPREATE @"NULL"
+
+//
+#define QUERYMsgCount   @"QueryMsgCount"
+#define QUERYMsgList    @"QueryMsgList"
+#define QUERYMsgDetail  @"QueryMsgDetail"
+#define DELETEMsg       @"DeleteMsg"
+
+static NSMutableArray * m_array=nil;
+static NSDate * m_getDate=nil;
+static NSString * m_sessionId=nil;
+static NSString * m_rmKey = nil;
+
++(void)resetDate:(NSDate*)newDate
+{
+    SETDATA(m_getDate,newDate);
+}
+
++(void)resetSid:(NSString *)newSid
+{
+    SETDATA(m_sessionId, newSid);
+}
+
++(C139ActivityCtrl *) GetC139ActivityCtrl
+{
+    if(m_array == nil)
+    {
+        m_array=[[NSMutableArray alloc] init];
+    }
+    
+    C139ActivityCtrl * szCtrl=[[[C139ActivityCtrl alloc] init] autorelease];
+    [m_array addObject:szCtrl];
+    return szCtrl;
+}
+
++(void) Remove139ActivityCtrl:(C139ActivityCtrl *)obj
+{
+    if(obj == nil) return;
+    
+    [m_array removeObject:obj];
+}
+
++(void) CleanSaveData
+{
+    SETDATA(m_getDate, nil);
+//    SETSTRING(m_sessionId, nil);
+//    SETSTRING(m_rmKey, nil);
+    //清除cookie
+    NSHTTPCookieStorage *cookieJar = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    NSArray *_tmpArray = [NSArray arrayWithArray:[cookieJar cookies]];
+    for (id obj in _tmpArray) {
+        NSHTTPCookie * cookie=(NSHTTPCookie *)obj;
+        if(cookie != nil)
+        {
+            NSString * domain=cookie.domain;
+            if([DOMAIN_139ACTIVITY compare:domain options:NSCaseInsensitiveSearch] == NSOrderedSame)
+            {
+                [cookieJar deleteCookie:obj];
+            }
+        }
+    }
+}
+
+
+-(void)dealloc
+{
+    m_delegate=nil;
+    RELEASE(m_actionType);
+    RELEASE(m_startTime);
+    RELEASE(m_endTime);
+    self.m_serverTime=nil;
+    //    if (richinfo_RequestQueue) {
+    //        dispatch_release(richinfo_RequestQueue);
+    //        richinfo_RequestQueue = 0x00;
+    //    }
+    [super dealloc];
+}
+
+-(id) init
+{
+    self=[super init];
+    if(self)
+    {
+        m_delegate=nil;
+        m_page=0;
+        m_number=0;
+        m_actionType=nil;
+        m_startTime=nil;
+        m_endTime=nil;
+        self.m_serverTime=nil;
+        //        richinfo_RequestQueue = dispatch_queue_create("com.richinfo.activityQueue", NULL);
+        
+    }
+    return self;
+}
+
+-(void) StopRequire
+{
+    m_delegate=nil;
+}
+
+-(BOOL)LoginCalendarWithAccount:(NSString*)account andPassword:(NSString*)pswd  delegate:(id)delegate
+{
+	m_delegate = delegate;
+    NSString * strContactAcount =account;
+    NSString * strContactPwd= pswd;
+	
+    if([RFUtility NSStringIsNULL:account]) return NO;
+//	NSURL *requestURL = [NSURL URLWithString:LOGIN_VIRTUAL_139];
+    NSString * url=[NSString stringWithFormat:LOGIN_VIRTUAL_139,pswd,account];
+	NSURL *requestURL = [NSURL URLWithString:[url stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	NSString * requestString=[RICHINFOXmlCtrl GetLogin139MailXmlString:strContactAcount pwd:strContactPwd];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		
+		NSHTTPCookieStorage *cookieJar = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+        for (NSHTTPCookie *cookie in [cookieJar cookies]) {
+            NSString * name=[cookie name];
+            NSString * val=[cookie value];
+            if([@"RMKEY" compare:name options:NSCaseInsensitiveSearch] == NSOrderedSame)
+            {
+                SETSTRING(m_rmKey, val);
+                break;
+            }
+        }
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+        NSString * result = [dict objectForKey:@"code"];
+        if(result != nil && [@"S_OK" compare:result options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //登录成功，帐号数据保存。
+			NSDictionary * varDict=[dict objectForKey:@"var"];
+
+			//sid
+            NSString * sid=[varDict objectForKey:@"sid"];
+            [C139ActivityCtrl resetSid:sid];
+			[RICHINFO_UserInfo sharedInstance].strSid = sid;
+			[RICHINFO_UserInfo sharedInstance].strrmkey = m_rmKey;
+
+            if(![RFUtility NSStringIsNULL:sid])
+            {
+                NSString *svrInfoURL = [varDict valueForKey:@"svrInfoURL"];
+				
+				NSArray *arrURL = [svrInfoURL componentsSeparatedByString:@"|"];
+				
+				for (id tempUrl in arrURL) {
+					if ([tempUrl rangeOfString:@"smsrebuild"].location != NSNotFound) {
+						[RICHINFO_UserInfo sharedInstance].activityHost =tempUrl;
+						[RICHINFO_UserInfo sharedInstance].activityDomain =[tempUrl substringFromIndex:7];
+					}
+					else if ([tempUrl rangeOfString:@"GetUserAddrJsonData"].location != NSNotFound) {
+						[RICHINFO_UserInfo sharedInstance].addrapiUrl = tempUrl;
+					}
+				}
+				
+				[RICHINFO_UserInfo sharedInstance].strAccount = account;
+				[RICHINFO_UserInfo sharedInstance].strPswd = pswd;
+				[RICHINFO_UserInfo sharedInstance].isSyningActivity = NO;
+				[RICHINFO_UserInfo sharedInstance].isLogin = YES;
+				
+				NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+				[userDefaults setObject:[RICHINFO_UserInfo sharedInstance].strAccount forKey:kRFAccountKey];
+				[userDefaults setObject:[RICHINFO_UserInfo sharedInstance].strPswd forKey:kRFToken];
+				[userDefaults synchronize];
+				
+				if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeLoginFinish:desc:result:sender:)]) {
+					[m_delegate NoticeLoginFinish:RESULT_OK desc:@"" result:nil sender:self];
+				}
+            }
+		}
+		else{
+			if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeLoginFinish:desc:result:sender:)]) {
+				[m_delegate NoticeLoginFinish:RESULT_FAILE desc:@"Token 过期！" result:nil sender:self];
+			}
+		}
+	    return YES;
+	}
+	else{
+		if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeLoginFinish:desc:result:sender:)]) {
+			[m_delegate NoticeLoginFinish:RESULT_FAILE desc:@"网络不给力。" result:nil sender:self];
+		}
+
+	}
+	return NO;
+}
+
+#pragma mark - Activity
+#pragma mark
+-(BOOL) Add139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate
+{
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl ConvertActivityToXmlString:acInfo :NO];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+
+    
+    NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, Add_139Activity, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];		
+        NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            NSDictionary * seqNoDict=[dict objectForKey:@"var"];
+            NSNumber * seqNoVal=[seqNoDict objectForKey:@"seqNo"];
+            NSString * seqNo=[NSString stringWithFormat:@"%d", [seqNoVal intValue]];
+            //成功
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeAdd139ActivityFinish:desc:acti:newid:sender:)])
+                [m_delegate NoticeAdd139ActivityFinish:RESULT_OK desc:@"OK" acti:acInfo newid:seqNo sender:self];
+        }
+        else
+        {
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeAdd139ActivityFinish:desc:acti:newid:sender:)])
+                [m_delegate NoticeAdd139ActivityFinish:RESULT_FAILE desc:@"Add 139 Activity Fail" acti:acInfo newid:nil sender:self];
+        }
+	}
+	return YES;
+}
+
+-(BOOL) Update139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate
+{
+    m_delegate=delegate;
+	
+    NSString * requestString=[RICHINFOXmlCtrl ConvertActivityToXmlString:acInfo :YES];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, Update_139Activity, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+        NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeDelete139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeUpdate139ActivityFinish:RESULT_OK desc:@"OK" acti:acInfo sender:self];
+        }
+        else
+        {
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeDelete139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeUpdate139ActivityFinish:RESULT_FAILE desc:@"OK" acti:acInfo sender:self];
+        }
+	}
+	return YES;
+
+}
+
+-(BOOL) Cancel139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate
+{
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl ConvertActivityToCanCelOrDelete:acInfo type:@"1"];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+//     NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, Cancel_139Activity, m_sessionId];
+	NSString * url=[NSString stringWithFormat:Cancel_139Activity, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+        
+        NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeDelete139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeCancel139ActivityFinish:RESULT_OK desc:@"OK" acti:acInfo sender:self];
+        }
+        else
+        {
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeDelete139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeCancel139ActivityFinish:RESULT_FAILE desc:@"Delete 139 Activity Fail" acti:acInfo sender:self];
+        }
+	}
+	return YES;
+}
+
+//delegate接口回调对象
+-(BOOL) setCalendarRemin:(RICHINFOActivityInfo *)actiInfo delegate:(id)delegate
+{
+    m_delegate=delegate;
+    NSString * requestString=[RICHINFOXmlCtrl GetYqSetRemindXmlString:actiInfo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    NSString * url=[NSString stringWithFormat:Set_Calendar_Remind,[RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeSetRemindActivityFinish:desc:acti:sender:)]) {
+				[m_delegate NoticeSetRemindActivityFinish:RESULT_OK desc:objCode acti:actiInfo sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeSetRemindActivityFinish:desc:acti:sender:)]) {
+				[m_delegate NoticeSetRemindActivityFinish:RESULT_FAILE desc:objCode acti:actiInfo sender:self];
+            }
+        }
+	}
+	
+    return YES;
+}
+
+-(BOOL) Delete139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate
+{
+	m_delegate=delegate;
+    NSString *type= @"0";
+	if ([acInfo.isInvitedCalendar isEqualToString:@"1"]) {
+		type= @"1";
+	}
+	NSString * requestString=[RICHINFOXmlCtrl ConvertActivityToCanCelOrDelete:acInfo type:type];
+
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+	NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, Delete_139Activity, m_sessionId];
+
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+        
+        NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeDelete139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeDelete139ActivityFinish:RESULT_OK desc:@"OK" acti:acInfo sender:self];
+        }
+        else
+        {
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeDelete139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeDelete139ActivityFinish:RESULT_FAILE desc:@"Delete 139 Activity Fail" acti:acInfo sender:self];
+        }
+	}
+	
+
+    return YES;
+}
+//发送同步联系人命令
+-(void)ContactSynToCloud:(NSMutableDictionary *)paramsDic{
+    NSMutableString *paramString = [NSMutableString stringWithString:Contact_Sync];
+    for (NSString *str in paramsDic.allKeys) {
+        NSString * s= [NSString stringWithFormat:@"%@=%@&",str,[paramsDic objectForKey:str]];
+        [paramString appendString:s];
+    };
+	
+	NSURL *requestURL = [NSURL URLWithString:paramString];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+}
+
+-(BOOL) Query139ActivityViewFrom:(NSString*)startDate ToDate:(NSString*)endDate  type:(NSString*)actiontype delegate:(id)delegate
+{
+    m_delegate=delegate;
+    
+    NSString *requestString = [RICHINFOXmlCtrl GetActivityViewXmlString:startDate etime:endDate];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:Query_139Activity_View,[RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [[NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error] retain];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		//		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableLeaves error:&error];
+		NSDictionary *dict =(NSDictionary*) [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+		
+		if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+		{
+			NSArray * resultDict=nil;
+			//解析结果并返回，请完成
+			resultDict = [self ParseViewResultToArray:dict];
+			
+			//成功
+			if(m_delegate != nil && [m_delegate respondsToSelector:@selector(Notice139ActivityViewFinish:desc:result:sender:)])
+				
+				[m_delegate Notice139ActivityViewFinish:RESULT_OK desc:@"Query 139 Activity OK" result:resultDict sender:self];
+		}
+		else
+		{
+			if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeQuery139ActivityFinish:desc:result:sender:)])
+				[m_delegate Notice139ActivityViewFinish:RESULT_FAILE desc:@"Query 139 Activity Fail" result:nil sender:self];
+		}
+		
+	    return YES;
+	}
+	
+	
+	return NO;
+}
+
+//查询139活动
+//actionType=history:表示查询已办活动
+//actionType=todo:表示查询待办活动
+//actionType=seven:表示查询近7天活动列表
+//actionType=all:表示用户所有的活动
+-(BOOL) Query139Activity:(int)page size:(int)number type:(NSString *)actionType delegate:(id)delegate
+{
+    m_delegate=delegate;
+    
+    NSString * pageString=[NSString stringWithFormat:@"%d", page];
+    NSString * numberString=[NSString stringWithFormat:@"%d", number];
+    
+    NSString * requestString=[RICHINFOXmlCtrl QueryActivityXmlString:pageString size:numberString type:actionType];
+    
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, Query_139Activity, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [[NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error] retain];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+
+		responseString = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+
+//		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:responseData options:NSJSONReadingMutableLeaves error:&error];
+		NSDictionary *dict =(NSDictionary*) [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+		
+		if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+		{
+			NSArray * resultDict=nil;
+			//解析结果并返回，请完成
+			NSDictionary * var=[dict objectForKey:@"var"];
+			resultDict = [self ParseResultToArray:var];
+			
+			//成功
+			if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeQuery139ActivityFinish:desc:result:sender:)])
+				
+				[m_delegate NoticeQuery139ActivityFinish:RESULT_OK desc:@"Query 139 Activity OK" result:resultDict sender:self];
+			
+
+		}
+		else
+		{
+			if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeQuery139ActivityFinish:desc:result:sender:)])
+				[m_delegate NoticeQuery139ActivityFinish:RESULT_FAILE desc:@"Query 139 Activity Fail" result:nil sender:self];
+		}
+  
+	    return YES;
+	}
+	
+	
+	return NO;
+}
+
+-(BOOL) YqOrReject139Activity:(NSString *)desc actiId:(NSString *)acId type:(NSString *)actionType delegate:(id)delegate
+{
+    m_delegate=delegate;
+
+	NSString * requestString=[RICHINFOXmlCtrl YqOrRejectActivityXmlString:desc sid:acId type:actionType];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+	
+	 NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, YqReject_139Activity, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+		
+		if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+		{
+			//成功
+			if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeYqReject139ActivityFinish:desc:acti:sender:)])
+				[m_delegate NoticeYqReject139ActivityFinish:RESULT_OK desc:acId acti:nil sender:self];
+		}
+		else
+		{
+			if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeYqReject139ActivityFinish:desc:acti:sender:)])
+				[m_delegate NoticeYqReject139ActivityFinish:RESULT_FAILE desc:acId acti:nil sender:self];
+		}
+
+	}
+	return YES;
+	
+}
+
+//按起始时间获取数据
+//sTime 开始时间
+//eTime 结束时间
+-(BOOL) Sync139Activity:(NSDate *)sTime end:(NSDate *)eTime delegate:(id)delegate
+{
+//    
+//    m_delegate=delegate;
+//    
+//    CFGregorianDate sDate=[CCodeCtrl FormatNSDate:sTime];
+//    CFGregorianDate eDate=[CCodeCtrl FormatNSDate:eTime];
+//    
+//    NSString * stimeString=[NSString stringWithFormat:@"%04d-%02d-%02d %02d:%02d:%02d", (int)sDate.year, sDate.month, sDate.day, sDate.hour, sDate.minute, (int)sDate.second];
+//    
+//    NSString * etimeString=[NSString stringWithFormat:@"%04d-%02d-%02d %02d:%02d:%02d", (int)eDate.year, eDate.month, eDate.day, eDate.hour, eDate.minute, (int)eDate.second];
+//    
+//    NSString * content=[RICHINFOXmlCtrl SyncActivityXmlString:stimeString etime:etimeString];
+//    
+//
+//    if([RFUtility NSStringIsNULL:content]) return NO;
+//    
+//    m_operateType=SYNCActivity;
+//    
+//    SETDATA(m_startTime, stimeString);
+//    SETDATA(m_endTime, etimeString);
+//    return YES;
+	return NO;
+
+
+//    NSString * content=[RICHINFOXmlCtrl SyncActivityXmlString:m_startTime etime:m_endTime];
+//    if([RFUtility NSStringIsNULL:content]) return NO;
+//    NSString * url=[NSString stringWithFormat:Sync_139Activity,[RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+//    
+//        dispatch_sync(richinfo_RequestQueue, ^(){
+//    if(m_translate != nil)
+//    {
+//        [m_translate Stop];
+//        RELEASE(m_translate);
+//    }
+//    
+//    m_translate=[[CTranslateCtrl alloc] init];
+//    [m_translate SetInterFace:self];
+//    [m_translate SetTag:m_operateType];
+//    [m_translate RequireUrlByPost:url :content :@"text/xml" :nil];
+//       });
+//    
+    return YES;
+}
+
+-(BOOL) GetYq139Activity:(int)page size:(int)number delegate:(id)delegate
+{
+    m_delegate=delegate;
+    NSString * pageString=[NSString stringWithFormat:@"%d", page];
+    NSString * numberString=[NSString stringWithFormat:@"%d", number];
+    NSString * requestString=[RICHINFOXmlCtrl GetYqActivityXmlString:pageString size:numberString];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+	
+    NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, Yq_139Activity, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        NSArray * resultDict=nil;
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //解析结果并返回，请完成
+            resultDict = [self ParseYqResultToArray:dict];
+			
+            //成功
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeYq139ActivityFinish:desc:result:sender:)])
+                [m_delegate NoticeYq139ActivityFinish:RESULT_OK desc:@"OK" result:resultDict sender:self];
+        }
+        else
+        {
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeYq139ActivityFinish:desc:result:sender:)])
+                [m_delegate NoticeYq139ActivityFinish:RESULT_FAILE desc:@"Get Yq 139 Activity Fail" result:nil sender:self];
+        }
+		
+	}
+	return YES;
+}
+
+//获得活动详细
+//delegate接口回调对象
+-(BOOL) GetInfo139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate
+{
+    m_delegate=delegate;
+//	int	0: 自己创建	1: 邀请活动	2：共享活动 3: 订阅活动
+	NSString *actiType=@"0";
+	if ([acInfo.isInvitedCalendar isEqualToString:@"1"]) {
+		actiType = @"1";
+	}
+	else if ([acInfo.isSharedCalendar isEqualToString:@"1"]) {
+		actiType = @"2";
+	}
+	else if ([acInfo.isSubCalendar isEqualToString:@"1"]){
+		actiType = @"3";
+	}
+    NSString * requestString=[RICHINFOXmlCtrl GetInfoActivityXmlString:acInfo.activityID type:actiType];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    NSString * url=[NSString stringWithFormat:@"%@%@%@",[RICHINFO_UserInfo sharedInstance].activityHost, Info_139Activity, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //解析新的数据
+            [self ParseInfoToActivity:dict :acInfo];
+            
+            //成功
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeGetInfo139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeGetInfo139ActivityFinish:RESULT_OK desc:@"OK" acti:acInfo sender:self];
+        }
+        else
+        {
+            if(m_delegate != nil && [m_delegate respondsToSelector:@selector(NoticeGetInfo139ActivityFinish:desc:acti:sender:)])
+                [m_delegate NoticeGetInfo139ActivityFinish:RESULT_FAILE desc:@"Get Info 139 Activity Fail" acti:acInfo sender:self];
+        }
+	}
+	return YES;
+
+}
+
+-(BOOL)queryFreeSMSCountDeleagte:(id)delegate{
+	
+    m_delegate=delegate;
+	
+    NSString * requestString=@"";
+    NSString * url=[NSString stringWithFormat:Query_Free_Sms_Count,[RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+			NSDictionary * var=[dict objectForKey:@"var"];
+			NSString *freeinfo = [var objectForKey:@"freeInfo"];
+//			NSString * sendCount = [NSString stringWithFormat:@"%d",[[var objectForKey:@"sendCount"] intValue]];
+//			NSString *feeValue = [var objectForKey:@"feeValue"];
+            //成功
+            //成功
+			if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeQueryFreeSmsCountFinish:desc:sendCount:sender:)]) {
+			   [m_delegate NoticeQueryFreeSmsCountFinish:RESULT_OK desc:freeinfo sendCount:freeinfo sender:self];
+			}
+        }
+        else
+        {
+			if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeQueryFreeSmsCountFinish:desc:sendCount:sender:)]) {
+				[m_delegate NoticeQueryFreeSmsCountFinish:RESULT_FAILE desc:Nil sendCount:nil sender:self];
+			}
+        }
+	}
+	return YES;
+}
+
+#pragma mark - 日历标签功能
+#pragma mark
+//delegate接口回调对象
+-(BOOL) QueryCalendarLabel:(NSString *)actionType delegate:(id)delegate;
+{
+    m_delegate=delegate;
+    NSString * requestString=[RICHINFOXmlCtrl QueryCalendarLabelXmlString:actionType];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    NSString * url=[NSString stringWithFormat:Query_CalendarLabels_139,[RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        NSArray * resultDict=nil;
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //解析新的数据
+            resultDict = [self ParseCalcndarLabelResultToArray:dict];
+            
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryCalendarLabelFinish:desc:result:sender:)]) {
+                [m_delegate NoticeQueryCalendarLabelFinish:RESULT_OK desc:nil result:resultDict sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryCalendarLabelFinish:desc:result:sender:)]) {
+                [m_delegate NoticeQueryCalendarLabelFinish:RESULT_FAILE desc:nil result:resultDict sender:self];
+            }
+        }
+	}
+
+    return YES;
+}
+
+//增加标签.
+-(BOOL)AddCalendarLabel:(CLabelInfo *)labelInfo delegate:(id)delegate{
+    
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl AddCalendarLabelXmlString:labelInfo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:Add_CalendarLabels_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            NSDictionary * va1r=[dict objectForKey:@"var"];
+            NSString * objCode = [va1r objectForKey:@"id"];
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeAddCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeAddCalendarLabelFinish:RESULT_OK desc:objCode acti:labelInfo sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeAddCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeAddCalendarLabelFinish:RESULT_FAILE desc:@"" acti:labelInfo sender:self];
+            }
+        }
+	}
+	
+    return YES;
+}
+
+
+//修改标签
+- (BOOL)ModifyCalendarLabel:(CLabelInfo *)labelInfo delegate:(id)delegate{
+    m_delegate=delegate;
+    NSString * requestString=[RICHINFOXmlCtrl ModifyCalendarLabelXmlString:labelInfo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:Modify_CalendarLabels_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeModifyCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeModifyCalendarLabelFinish:RESULT_OK desc:objCode acti:labelInfo sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeModifyCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeModifyCalendarLabelFinish:RESULT_FAILE desc:@"" acti:labelInfo sender:self];
+            }
+        }
+	}
+
+	
+    return YES;
+}
+
+//删除标签
+-(BOOL)DeleteCalendarLabel:(CLabelInfo *)labelInfo delegate:(id)delegate{
+    
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl DeleteCalendarLabelXmlString:labelInfo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:Delete_CalendarLabels_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+			objCode = [dict objectForKey:@"summary"];
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeDeleteCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeDeleteCalendarLabelFinish:RESULT_OK desc:objCode acti:labelInfo sender:self];
+            }
+        }
+        else
+        {
+			objCode = [dict objectForKey:@"summary"];
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeDeleteCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeDeleteCalendarLabelFinish:RESULT_FAILE desc:@"" acti:labelInfo sender:self];
+            }
+        }
+
+	}
+    return YES;
+}
+
+//deleteLabelShare
+
+//取消订阅
+-(BOOL)CancelSubscribeLabel:(CLabelInfo *)labelInfo delegate:(id)delegate{
+    
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl CancelSubCalendarLabelXmlString:labelInfo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:Cancel_SubscribeLabel, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+			objCode = [dict objectForKey:@"summary"];
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeCancelSubscribeLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeCancelSubscribeLabelFinish:RESULT_OK desc:objCode acti:labelInfo sender:self];
+            }
+        }
+        else
+        {
+			objCode = [dict objectForKey:@"summary"];
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeCancelSubscribeLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeCancelSubscribeLabelFinish:RESULT_FAILE desc:@"" acti:labelInfo sender:self];
+            }
+        }
+		
+	}
+    return YES;
+}
+
+
+-(BOOL) CancelLabelShare:(CLabelInfo *)labelInfo delegate:(id)delegate{
+	m_delegate=delegate;
+    
+	NSLog(@"%@", labelInfo.seqNo);
+    NSString * requestString=[RICHINFOXmlCtrl CancelLabelShareXmlString:labelInfo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:Delete_Share_Label, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+			objCode = [dict objectForKey:@"summary"];
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeCancelSubscribeLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeCancelSubscribeLabelFinish:RESULT_OK desc:objCode acti:labelInfo sender:self];
+            }
+        }
+        else
+        {
+			objCode = [dict objectForKey:@"summary"];
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeCancelSubscribeLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeCancelSubscribeLabelFinish:RESULT_FAILE desc:@"" acti:labelInfo sender:self];
+            }
+        }
+		
+	}
+    return YES;
+	return YES;
+}
+
+
+
+//3.1.7	根据主键查询用标签
+-(BOOL) GetCalendarLabelDetail:(CLabelInfo*)labelInfo delegate:(id)delegate{
+
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetCalendarLabelDetailByidXmlString:labelInfo.seqNo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    
+    NSString * url=[NSString stringWithFormat:Detail_CalendarLabels_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];		
+		NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            [self ParseInfoToCalendarLabel:dict :labelInfo];
+						
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeDetailCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeDetailCalendarLabelFinish:RESULT_OK desc:nil acti:labelInfo sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeDeleteCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeDetailCalendarLabelFinish:RESULT_FAILE desc:nil acti:labelInfo sender:self];
+            }
+        }
+	}
+
+    return YES;
+}
+
+#pragma mark - 消息盒子
+#pragma mark
+-(BOOL)QueryMessageCount:(id)delegate{
+    
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgCountXmlString];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:QUERY_MessageCount_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryCalendarLabelFinish:desc:result:sender:)]) {
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryCalendarLabelFinish:desc:result:sender:)]) {
+            }
+        }
+	}
+    return YES;
+}
+
+-(BOOL) QueryMessageList:(int)page size:(int)number delegate:(id)delegate
+{
+    m_delegate=delegate;
+    NSString * pageString=[NSString stringWithFormat:@"%d", page];
+    NSString * numberString=[NSString stringWithFormat:@"%d", number];
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgListXmlString:pageString size:numberString];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+	
+    NSString * url=[NSString stringWithFormat:QUERY_MessageList_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+        NSArray * resultDict=nil;
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //解析结果并返回，请完成
+			resultDict = [self ParseResultToMessageInfoArray:dict];
+
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryMsgListFinish:desc:result:sender:)]) {
+                [m_delegate NoticeQueryMsgListFinish:RESULT_OK desc:@"" result:resultDict sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryMsgListFinish:desc:result:sender:)]) {
+                [m_delegate NoticeQueryMsgListFinish:RESULT_FAILE desc:@"" result:resultDict sender:self];
+            }
+        }
+
+	}
+
+    return YES;
+}
+
+//处理标签分享信息。
+-(BOOL) ProcessShareCalendarLabel:(NSString*)labelId type:(NSString*)actionType delegate:(id)delegate{
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl ProcessShareLabelsXmlString:@"标签共享消息处理" sid:labelId type:actionType];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    NSString * url=[NSString stringWithFormat:Process_ShareCalendarLabel_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeProcessShareLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeProcessShareLabelFinish:RESULT_OK desc:m_actionType acti:nil sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeAddCalendarLabelFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeProcessShareLabelFinish:RESULT_FAILE desc:m_actionType acti:nil sender:self];
+            }
+        }
+	}
+    return YES;
+}
+
+
+//查询消息详情
+-(BOOL)QueryMessageDetail:(CMessageBoxInfo*)msgInfo delegate:(id)delegate{
+    
+    m_delegate=delegate;
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgDeatilXmlString:msgInfo.seqNo];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+	
+    NSString * url=[NSString stringWithFormat:QUERY_MessageDetail_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+			[self ParseMsgDetailResultToInfo:dict :msgInfo ];
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryMsgDetailFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeQueryMsgDetailFinish:RESULT_OK desc:@"" acti:msgInfo sender:self];
+            }
+        }
+        else
+        {
+            //失败
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryMsgDetailFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeQueryMsgDetailFinish:RESULT_FAILE desc:@"" acti:msgInfo sender:self];
+            }
+        }
+
+	}
+    return YES;
+}
+
+//删除消息信息。
+-(BOOL) DeleteMessage:(NSString*)msgId delegate:(id)delegate
+{
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgDeleteXmlString:msgId];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    	
+    NSString * url=[NSString stringWithFormat:DELETE_Message_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+        NSString * objCode = [dict objectForKey:@"code"];
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryCalendarLabelFinish:desc:result:sender:)]) {
+				[m_delegate NoticeDeletMsgFinish:RESULT_OK desc:msgId acti:nil sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryCalendarLabelFinish:desc:result:sender:)]) {
+				[m_delegate NoticeDeletMsgFinish:RESULT_FAILE desc:msgId acti:nil sender:self];
+            }
+        }
+	}
+    return YES;
+}
+
+//
+-(BOOL) YqOrRejectMessage:(CMessageBoxInfo*)msgInfo  type:(NSString*)actionType delegate:(id)delegate
+{
+	m_delegate=delegate;
+	NSString *seqon = @"";
+	if ([msgInfo.type isEqualToString:@"1"]) {
+		seqon = msgInfo.actiSeqNo;
+	}
+	else if ([msgInfo.type isEqualToString:@"2"]){
+		seqon = msgInfo.labelSeqNo;
+	}
+	NSString * requestString=[RICHINFOXmlCtrl YqOrRejectActivityXmlString:@"" sid:seqon type:actionType];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+	
+	NSString * url=[NSString stringWithFormat:@"%@%@%@", [RICHINFO_UserInfo sharedInstance].activityHost, YqReject_139Activity, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+
+		if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+		{
+			//成功
+			if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeYqORejectMsgFinish:desc:acti:sender:)]) {
+				[m_delegate NoticeYqORejectMsgFinish:RESULT_OK desc:@"" acti:msgInfo sender:self];
+			}
+		}
+		else
+		{
+			//成功
+			if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeYqORejectMsgFinish:desc:acti:sender:)]) {
+				[m_delegate NoticeYqORejectMsgFinish:RESULT_FAILE desc:@"" acti:msgInfo sender:self];
+			}
+		
+		}
+		
+	}
+	return YES;
+
+}
+
+
+- (BOOL)QueryContacotorsAddresList:(id)delegate{
+	m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetUserAddrJsonDataXmlString];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+	
+    NSString * url=[NSString stringWithFormat:QUERY_Contactors, [RICHINFO_UserInfo sharedInstance].strSid];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+	
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+	NSString *responseString = nil;
+	if (200 == [response statusCode]) {
+		responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+		NSRange location = [responseString rangeOfString:@"GetUserAddrDataResp"];
+		responseString = [responseString substringFromIndex:location.location+ location.length +1];
+		responseString=[responseString stringByReplacingOccurrencesOfString:@"\r\n" withString:@"\n"];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\t" withString:@" "];
+        responseString=[responseString stringByReplacingOccurrencesOfString:@"\b" withString:@""];
+		
+		NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		
+		NSString * objCode = [dict objectForKey:@"ResultCode"];
+		NSArray *resultDict = nil;
+			if(objCode != nil && [objCode compare:@"0" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+        {
+			//将结果转成数组
+			resultDict = [self ParseResultToContactorArray:dict];
+			
+            //成功
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryContactorListFinish:desc:result:sender:)]) {
+				[m_delegate NoticeQueryContactorListFinish:RESULT_OK desc:@"" result:resultDict sender:self];
+            }
+        }
+        else
+        {
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeQueryContactorListFinish:desc:result:sender:)]) {
+				[m_delegate NoticeQueryContactorListFinish:RESULT_FAILE desc:@"" result:nil sender:self];
+
+            }
+        }
+	}
+	return YES;
+}
+
+#pragma mark - 黑白名单 
+/**
+ *
+ *
+ *  @param msgInfo
+ *  @param type     1:白名单 2：黑名单
+ *  @param delegate
+ *
+ *  @return YES or NO
+ */
+-(BOOL)AddBlackWhiteItem:(CMessageBoxInfo*)msgInfo type:(NSString *)type delegate:(id)delegate {
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgBlackWhiteXmlString:msgInfo type:type];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:ADD_BlackWhite_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+    
+    NSString *responseString = nil;
+    
+    if (200 == [response statusCode]) {
+        responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+        
+        NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+        
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame){
+            if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeAddBlackWhiteItemMsgFinish:desc:acti:sender:)]) {
+                [m_delegate NoticeAddBlackWhiteItemMsgFinish:RESULT_OK desc:type acti:nil sender:self];
+            }
+        }
+        
+        return YES;
+    }
+    
+    return NO;
+}
+
+-(BOOL)DelBlackWhiteItem:(NSString *)uin delegate:(id)delegate{
+    m_delegate=delegate;
+    
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgBlackWhiteXmlString:uin];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:DEL_BlackWhite_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+    
+    if (200 == [response statusCode]) {
+        if (m_delegate !=nil && [m_delegate respondsToSelector:@selector(NoticeDelBlackWhiteItemMsgFinish:desc:acti:sender:)]) {
+            [m_delegate NoticeDelBlackWhiteItemMsgFinish:0 desc:@"" acti:nil sender:self];
+        }
+        
+        return YES;
+    }
+    
+    return NO;
+}
+
+-(BOOL)GetBlackWhiteItem:(CMessageBoxInfo *)msgInfo delegate:(id)delegate{
+    m_delegate=delegate;
+    
+	NSString *uin = @"";
+	if ([msgInfo.type isEqualToString:@"1"]) {
+		uin = msgInfo.actiUin;
+	}
+	else if ([msgInfo.type isEqualToString:@"2"])
+	{
+		uin = msgInfo.labelUin;
+	}
+    NSString * requestString=[RICHINFOXmlCtrl GetMsgBlackWhiteXmlString:uin];
+    if([RFUtility NSStringIsNULL:requestString]) return NO;
+    
+    NSString * url=[NSString stringWithFormat:GET_BlackWhite_139, [RICHINFO_UserInfo sharedInstance].activityHost, m_sessionId];
+	NSURL *requestURL = [NSURL URLWithString:url];
+	NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:requestURL];
+	[urlRequest setTimeoutInterval:20.0f];
+	[urlRequest setHTTPMethod:@"POST"];
+	[urlRequest setHTTPBody:[requestString dataUsingEncoding:NSUTF8StringEncoding]];
+    
+	NSHTTPURLResponse *response = nil;
+	NSData *responseData = nil;
+	NSError *error = nil;
+	responseData = [NSURLConnection sendSynchronousRequest:urlRequest returningResponse:&response error:&error];
+    
+    NSString *responseString = nil;
+    if (200 == [response statusCode]) {
+        responseString = [[[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding] autorelease];
+        
+        NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[responseString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:&error];
+       //	type 0 不存在 1:白名单 2:黑名单
+		
+		NSString * objCode = [dict objectForKey:@"code"];
+		
+        if(objCode != nil && [objCode compare:@"S_OK" options:NSCaseInsensitiveSearch] == NSOrderedSame){
+		
+			NSDictionary * var=[dict objectForKey:@"var"];
+			NSString * type = [NSString stringWithFormat:@"%d",[[var objectForKey:@"type"] intValue]];
+			if (m_delegate && [m_delegate respondsToSelector:@selector(NoticeGetBlackWhiteItemMsgFinish:desc:acti:sender:)]) {
+				[m_delegate NoticeGetBlackWhiteItemMsgFinish:RESULT_OK desc:type acti:msgInfo sender:self];
+			}
+        }
+        
+        return YES;
+    }
+    
+    return NO;
+}
+
+
+#pragma mark - Class Funciton
+-(void) SetCookie
+{
+    NSMutableDictionary *cookieProperties = [NSMutableDictionary dictionary];
+    [cookieProperties setValue:@"RMKEY" forKey:NSHTTPCookieName];
+//    [cookieProperties setValue:[RICHINFO_UserInfo sharedInstance].strrmkey forKey:NSHTTPCookieValue];
+//    [cookieProperties setValue:[RICHINFO_UserInfo sharedInstance].activityDomain forKey:NSHTTPCookieDomain];
+    [cookieProperties setValue:@"/" forKey:NSHTTPCookiePath];
+    [cookieProperties setValue:@"0" forKey:NSHTTPCookieVersion];
+    NSHTTPCookie *cookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
+    
+    //    NSMutableDictionary *cookieProperties2 = [NSMutableDictionary dictionary];
+    //    [cookieProperties2 setObject:@"sid" forKey:NSHTTPCookieName];
+    //    [cookieProperties2 setObject:m_sessionId forKey:NSHTTPCookieValue];
+    //    [cookieProperties2 setObject:DOMAIN_139ACTIVITY forKey:NSHTTPCookieDomain];
+    //    [cookieProperties2 setObject:@"/" forKey:NSHTTPCookiePath];
+    //    [cookieProperties2 setObject:@"0" forKey:NSHTTPCookieVersion];
+    //    NSHTTPCookie *cookie2 = [NSHTTPCookie cookieWithProperties:cookieProperties2];
+    
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookie:cookie];
+    //  [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookie:cookie2];
+    
+//    NSDictionary * cookieDict=[NSHTTPCookie requestHeaderFieldsWithCookies:[[NSHTTPCookieStorage sharedHTTPCookieStorage] cookies]];
+}
+
+-(NSArray *) ParseViewResultToArray:(NSDictionary *)dict
+{
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSMutableArray * szArray=[NSMutableArray array];
+    
+	//    NSDictionary * var=[dict objectForKey:@"var"];
+    if(dict != nil && [dict isKindOfClass:[NSDictionary class]])
+    {
+        NSDictionary * table=[dict objectForKey:@"table"];
+		for (id tempDict  in [table allValues]) {
+				if(tempDict != nil && [tempDict isKindOfClass:[NSDictionary class]]){
+					RICHINFOActivityInfo * szAc=[[[RICHINFOActivityInfo alloc] init] autorelease];
+					if([self parseActivity:tempDict :szAc]){
+					[szArray addObject:szAc];
+				}
+			}
+        }
+    }
+    
+    return szArray;
+}
+
+-(NSArray *) ParseResultToArray:(NSDictionary *)dict
+{
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSMutableArray * szArray=[NSMutableArray array];
+    
+//    NSDictionary * var=[dict objectForKey:@"var"];
+    if(dict != nil && [dict isKindOfClass:[NSDictionary class]])
+    {
+        self.m_serverTime=[dict objectForKey:@"serverTime"];
+        
+        NSArray * table=[dict objectForKey:@"table"];
+        [self ParseArrayToArray:table :szArray];
+        table=[dict objectForKey:@"add"];
+        [self ParseArrayToArray:table :szArray];
+        table=[dict objectForKey:@"update"];
+        [self ParseArrayToArray:table :szArray];
+    }
+    
+    return szArray;
+}
+
+-(void) ParseInfoToActivity:(NSDictionary *)dict :(RICHINFOActivityInfo*)info
+{
+    if(dict == nil) return;
+    
+    NSDictionary * var=[dict objectForKey:@"var"];
+    if(var != nil)
+    {
+        [self parseActivity:var :info];
+    }
+}
+
+-(BOOL) parseActivity:(NSDictionary *)tempDict :(RICHINFOActivityInfo *) szAc
+{
+    
+//    isSubCalendar
+    if(tempDict == nil) return NO;
+    
+    NSString * tempText=nil;
+    szAc.isSharedCalendar = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"isSharedCalendar"] intValue]];
+    szAc.isSubCalendar = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"isSubCalendar"] intValue]];
+    szAc.isInvitedCalendar= [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"isInvitedCalendar"] intValue]];
+
+	szAc.myStatus = @"1";
+    szAc.activityID=[NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"seqNo"] intValue]];     //活动ID
+    szAc.description=[tempDict objectForKey:@"content"];    //描述
+    
+    szAc.category= [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"calendarType"] intValue]];
+    szAc.categoryName =[tempDict objectForKey:@"calendarname"];
+   
+    szAc.labelid = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"labelId"] intValue]]; //标签ID
+    szAc.labelName =[tempDict objectForKey:@"labelName"];     //标签
+    szAc.labelColor =[tempDict objectForKey:@"color"];     //
+    
+    szAc.summary=[tempDict valueForKey:@"title"];      //标题
+//	if (szAc.summary.length <= 0) {
+//		szAc.summary = @"无标题";
+//	}
+    szAc.location=[tempDict objectForKey:@"site"];      //地点
+
+    //开启与结束时间
+    szAc.startDate=[self FormatTimeStirngToDate:tempDict :@"startDate" :@"startTime"];
+    szAc.endDate=[self FormatTimeStirngToDate:tempDict :@"endDate" :@"endTime"];
+
+    //重复活动结束
+    szAc.sendInterval=[NSString stringWithFormat:@"%@", [tempDict objectForKey:@"sendInterval"]];
+	if ([szAc.sendInterval isEqualToString:@"(null)"]) {
+		szAc.sendInterval=@"0";
+	}
+	szAc.week = [tempDict objectForKey:@"dateFlag"];
+    if (szAc.week == nil) {
+		szAc.week= @"000000";
+	}
+//	持续一整天的事项，下发提醒时间以当天上午8点为基准
+	NSDateComponents *startComponents = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:szAc.startDate];
+        NSTimeInterval val = [szAc.endDate timeIntervalSinceDate:szAc.startDate];
+        if (startComponents.hour == 8 && val >= (16* 60 - 1) *60) {
+            szAc.isFullday = YES;
+        }
+        else{
+            szAc.isFullday = NO;
+        }
+    
+    //提醒时间
+    NSNumber * tempNumber=[tempDict objectForKey:@"beforeTime"];
+    
+    //提醒类型
+    NSNumber * remindTypeNumber=[tempDict objectForKey:@"beforeType"];
+    int remindType=[remindTypeNumber intValue];
+    if(remindType==0)//分钟
+    {
+        szAc.offset=[NSString stringWithFormat:@"%d", [tempNumber intValue]];
+    }
+    else if(remindType==1)//小时
+    {
+        szAc.offset=[NSString stringWithFormat:@"%d", [tempNumber intValue]*60];
+    }
+    else//天数
+    {
+        szAc.offset=[NSString stringWithFormat:@"%d", [tempNumber intValue]*1440];
+    }
+    
+    //sms 提醒
+    tempText=[tempDict objectForKey:@"recMySMS"];
+    RESETBUFFER(tempText);
+    szAc.alarm=tempText;
+    
+	szAc.recMyEmail=[NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"recMyEmail"] intValue]];
+	szAc.recMySms=[NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"recMySms"] intValue]];	
+	szAc.recEmail=[tempDict objectForKey:@"recEmail"];      //标题
+	szAc.recMobile=[tempDict objectForKey:@"recMobile"];      //标题
+
+    //enable
+    NSNumber * enableVal=[tempDict objectForKey:@"enable"];
+    int enable=[enableVal intValue];
+    if(enable == 1)
+        szAc.activityStatus=@"1";
+    else if(enable == 0)
+    {
+        if(enableVal != nil)
+            szAc.activityStatus=@"0";
+        else
+            szAc.activityStatus=@"0";
+    }
+    else
+        szAc.activityStatus=@"0";
+    
+    szAc.optFlag = @"6";
+    //解释邀请人
+    NSMutableString * yqString=[NSMutableString string];
+    NSArray * yqArray=[tempDict objectForKey:@"inviteInfo"];
+    
+    [szAc.arrInviteInfo removeAllObjects];
+    for (id yqObj in yqArray) {
+        
+        if(yqObj != nil && [yqObj isKindOfClass:[NSDictionary class]])
+        {
+//            RICHINFO_UserInfo * szUser=[RICHINFO_UserInfo sharedInstance];
+            
+            NSDictionary * yqDict=(NSDictionary *)yqObj;
+            NSString * mobile=[yqDict objectForKey:@"recMobile"];
+            
+            if([RFUtility NSStringIsNULL:mobile])
+                mobile=[yqDict objectForKey:@"recEmail"];
+            
+//            if([szUser.strMailAddr rangeOfString:mobile options:NSCaseInsensitiveSearch].location != NSNotFound) continue;
+            
+            if(![RFUtility NSStringIsNULL:mobile])
+            {
+                [yqString appendString:mobile];
+                [yqString appendString:@";"];
+            }
+            
+            InviteInfo* item = [[InviteInfo alloc] init];
+            
+            item.inviterUin=[yqDict objectForKey:@"inviterUin"];      //标题
+            item.recMySms =[[yqDict objectForKey:@"recMySms"] intValue];      //是否接搜我的短信
+            item.recMyEmail=[[yqDict objectForKey:@"recMyEmail"] intValue];      //是否接受我的邮件。
+
+            item.recEmail=[yqDict objectForKey:@"recEmail"];      //标题
+            item.recMobile=[yqDict objectForKey:@"recMobile"];      //标题
+            
+            if (item.recEmail.length <= 0) {
+                //只能是手机号，去86
+                NSString *uin = item.recMobile;
+                if([uin length] == 13)
+                    uin=[uin substringWithRange:NSMakeRange(2, 11)];
+                
+                uin=[uin stringByAppendingString:@"@139.com"];
+                item.recEmail=uin;
+            }
+        
+            item.inviteAuth=[[yqDict objectForKey:@"inviteAuth"] intValue];      //标题
+			if (item.inviteAuth == -1) {
+				[item release];
+				continue;
+			}
+            item.status=[[yqDict objectForKey:@"status"] intValue];      //标题
+            item.refuseResion=[yqDict objectForKey:@"refuseResion"];      //标题
+            item.smsNotify=[[yqDict objectForKey:@"smsNotify"] intValue];      //标题
+            item.emailNotify=[[yqDict objectForKey:@"emailNotify"] intValue];      //标题
+            
+            item.beforeType=[[yqDict objectForKey:@"beforeType"] intValue];      //标题
+            item.beforeTime = [[yqDict objectForKey:@"beforeTime"] intValue];      //标题
+            item.enabel=[[yqDict objectForKey:@"enable"] intValue];      //标题
+            
+            [szAc.arrInviteInfo addObject:item];
+            [item release];
+        }
+
+    }
+    if(![RFUtility NSStringIsNULL:yqString])
+        szAc.attenders=yqString;
+    
+    return YES;
+}
+
+-(void) ParseArrayToArray:(NSArray *)dataArray :(NSMutableArray *)addArray
+{
+    for (id obj in dataArray) {
+        if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * tempDict=(NSDictionary *)obj;
+            
+            RICHINFOActivityInfo * szAc=[[[RICHINFOActivityInfo alloc] init] autorelease];
+            if([self parseActivity:tempDict :szAc])
+                [addArray addObject:szAc];
+        }
+    }
+}
+
+//数组里面是字典
+-(void) ParseArrayToArray_dictonary:(NSArray *)dataArray :(NSMutableArray *)addArray
+{
+    for (id obj in dataArray) {
+        if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * tempDict=(NSDictionary *)obj;
+            [addArray addObject:tempDict];
+        }
+    }
+}
+-(NSArray *) ParseYqResultToArray:(NSDictionary *)dict
+{
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSMutableArray * szArray=[NSMutableArray array];
+
+    NSDictionary * var=[dict objectForKey:@"var"];
+    if(var != nil && [var isKindOfClass:[NSDictionary class]])
+    {
+        NSArray * table=[var objectForKey:@"data"];
+        [self ParseYqArrayToArray:table :szArray];
+    }
+    
+    return szArray;
+}
+
+-(void) ParseYqArrayToArray:(NSArray *)dataArray :(NSMutableArray *)addArray
+{
+    for (id obj in dataArray) {
+        if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * tempDict=(NSDictionary *)obj;
+            
+            RICHINFOActivityInfo * szAc=[[RICHINFOActivityInfo alloc] init];
+            szAc.activityID=[NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"calendarId"] intValue]];
+            szAc.activityStatus=@"1";
+            
+            szAc.description=[tempDict objectForKey:@"content"];
+            szAc.summary=[tempDict objectForKey:@"title"];
+            szAc.location=[tempDict objectForKey:@"site"];
+            NSString * uin=[tempDict objectForKey:@"uin"];
+            if(![RFUtility NSStringIsNULL:uin])
+            {
+                if([RFUtility isEmailValid:uin])
+                {
+                    szAc.createrAccount=uin;
+                }
+                else
+                {
+                    //只能是手机号，去86
+                    if([uin length] == 13)
+                        szAc.createrAccount=[uin substringWithRange:NSMakeRange(2, 11)];
+                    else
+                        szAc.createrAccount=uin;
+                    
+                    NSString * tempText=szAc.createrAccount;
+                    tempText=[tempText stringByAppendingString:@"@139.com"];
+                    szAc.createrAccount=tempText;
+                }
+            }
+            
+            szAc.myStatus=[NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"status"] intValue]];
+            szAc.category=@"10";
+            szAc.categoryName=@"公历";
+            
+            szAc.startDate=[self FormatTimeStirngToDate:tempDict :@"startDate" :@"startTime"];
+            szAc.endDate=[self FormatTimeStirngToDate:tempDict :@"endDate" :@"endTime"];
+            
+            [addArray addObject:szAc];
+            
+            [szAc release];
+        }
+    }
+}
+
+-(NSArray *) ParseCalcndarLabelResultToArray:(NSDictionary *)dict
+{
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSMutableArray * szArray=[NSMutableArray array];
+    
+    NSDictionary * var=[dict objectForKey:@"var"];
+    if(var != nil && [var isKindOfClass:[NSDictionary class]])
+    {
+		
+		//标签类型。   0：系统标签，1：用户自定义标签 2：分享日历 3：订阅日历
+        NSArray *table=[var objectForKey:@"sysLabels"];
+        [self ParsealcndarLabelArrayToArray:table :szArray :@"0"];
+        
+        table=[var objectForKey:@"userLabels"];
+        [self ParsealcndarLabelArrayToArray:table :szArray :@"1"];
+        
+        table=[var objectForKey:@"shareLabels"];
+        [self ParsealcndarLabelArrayToArray:table :szArray :@"2"];
+        
+        table=[var objectForKey:@"subscribedLabels"];
+        [self ParsealcndarLabelArrayToArray:table :szArray :@"3"];
+    }
+    
+    return szArray;
+}
+-(void) ParseInfoToCalendarLabel:(NSDictionary *)dict :(CLabelInfo*)labelInfo
+{
+    if(dict == nil) return;
+    
+    NSDictionary * var=[dict objectForKey:@"var"];
+    if(var != nil)
+    {
+        [self parseCalendarLabel:var :labelInfo];
+    }
+}
+
+-(BOOL) parseCalendarLabel:(NSDictionary *)tempDict :(CLabelInfo *) labelInfo
+{
+    if(tempDict == nil) return NO;
+    
+	labelInfo.seqNo = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"seqNo"] intValue]];
+    labelInfo.uin=[tempDict objectForKey:@"uin"];      //标题
+    labelInfo.labelName=[tempDict objectForKey:@"labelName"];      //标题
+    labelInfo.description=[tempDict objectForKey:@"description"];      //标题
+    labelInfo.color=[tempDict objectForKey:@"color"];      //标题
+    labelInfo.isShare=[tempDict objectForKey:@"isShare"];      //标题
+    labelInfo.isPublic=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"isPublic"]  intValue]];      //标题
+    labelInfo.author=[tempDict objectForKey:@"author"];      //标题
+    labelInfo.calendarCount=[[tempDict objectForKey:@"calendarCount"]  intValue];      //标题
+    labelInfo.createTime=[tempDict objectForKey:@"createTime"];      //标题
+    labelInfo.modifyTime=[tempDict objectForKey:@"modifyTime"];      //标题
+    labelInfo.CalendarSmsNotifyNew=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"newCalendarSmsNotify"]  intValue]];      //标题
+    labelInfo.CalendarEmailNotifyNew=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"newCalendarEmailNotify"]  intValue]];      //标题
+    labelInfo.updateCalendarSmsNotify=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"updateCalendarSmsNotify"]  intValue]];      //标题
+    labelInfo.updateCalendarEmailNotify=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"updateCalendarEmailNotify"]  intValue]];      //标题
+    labelInfo.deleteCalendarSmsNotify=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"deleteCalendarSmsNotify"]  intValue]];      //标题
+    labelInfo.deleteCalendarEmailNotify=[ NSString stringWithFormat:@"%d",[[tempDict objectForKey:@"deleteCalendarEmailNotify"]  intValue]];      //标题
+//	NSArray *table=[var objectForKey:@"sysLabels"];
+
+    NSArray * shareInfoArr=[tempDict objectForKey:@"shareInfo"];
+	
+	for (id obj in shareInfoArr) {
+		if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * shareInfo=(NSDictionary *)obj;
+			CLabelShareInfo *shartItem = [[CLabelShareInfo alloc] init];
+			shartItem.authUin=[shareInfo objectForKey:@"authUin"];      //标题
+			
+			shartItem.shareUin=[shareInfo objectForKey:@"shareUin"];      //
+			if ([shartItem.shareUin isEqualToString:labelInfo.uin]) {  //自己是参与只之一 去除
+				[shartItem release];
+				continue;
+			}
+			shartItem.shareUin=[shareInfo objectForKey:@"shareUin"];      //标题
+			shartItem.shareType=[shareInfo objectForKey:@"shareType"];      //标题
+			shartItem.status=[NSString stringWithFormat:@"%d",[[shareInfo objectForKey:@"status"] intValue]];      //标题
+			shartItem.refuseResion=[shareInfo objectForKey:@"refuseResion"];      //标题
+			shartItem.shareTrueName = [shareInfo objectForKey:@"shareTrueName"];
+			shartItem.smsNotify=[[shareInfo objectForKey:@"smsNotify"] intValue];      //标题
+			shartItem.smsNotify=[[shareInfo objectForKey:@"smsNotify"] intValue];      //标题
+			
+			shartItem.newCalendarSmsNotify=[[shareInfo objectForKey:@"newCalendarSmsNotify"] intValue];      //标题
+			shartItem.newCalendarEmailNotify=[[shareInfo objectForKey:@"newCalendarEmailNotify"] intValue];      //标题
+			shartItem.updateCalendarSmsNotify=[[shareInfo objectForKey:@"updateCalendarSmsNotify"] intValue];      //标题
+			shartItem.updateCalendarEmailNotify=[[shareInfo objectForKey:@"updateCalendarEmailNotify"] intValue];      //标题
+			shartItem.deleteCalendarSmsNotify=[[shareInfo objectForKey:@"deleteCalendarSmsNotify"] intValue];      //标题
+			shartItem.deleteCalendarEmailNotify=[[shareInfo objectForKey:@"deleteCalendarEmailNotify"] intValue];      //标题
+			
+			[labelInfo.arrlabelShareInfo addObject:shartItem];
+			[shartItem release];
+		}
+	}
+		
+		
+    return YES;
+}
+
+
+-(void) ParsealcndarLabelArrayToArray:(NSArray *)dataArray :(NSMutableArray *)addArray :(NSString*)labelType
+{
+    for (id obj in dataArray) {
+        if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * tempDict=(NSDictionary *)obj;
+            
+            CLabelInfo * labelInfo=[[CLabelInfo alloc] init];
+            labelInfo.LabelType = labelType;
+            labelInfo.seqNo = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"seqNo"] intValue]];
+            labelInfo.labelName = [tempDict objectForKey:@"labelName"];
+            labelInfo.description = [tempDict objectForKey:@"description "];
+            labelInfo.color = [tempDict objectForKey:@"color"];
+            labelInfo.subscribedTime = [tempDict objectForKey:@"subscribedTime"];
+            labelInfo.isPublic = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"isPublic"] intValue]];
+            labelInfo.isShare = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"isShare"] intValue]];
+            labelInfo.shareType = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"shareType"] intValue]];
+            labelInfo.calendarCount = [[tempDict objectForKey:@"calendarCount"] intValue];
+            labelInfo.createTime = [tempDict objectForKey:@"createTime"];
+            labelInfo.modifyTime = [tempDict objectForKey:@"modifyTime"];
+			labelInfo.author =[tempDict objectForKey:@"author"];
+			labelInfo.shareAcceptCount = [[tempDict objectForKey:@"shareAcceptCount"] intValue];
+			labelInfo.shareRefuseCount = [[tempDict objectForKey:@"shareRefuseCount"] intValue];
+			labelInfo.shareNoFeedbackCount = [[tempDict objectForKey:@"shareNoFeedbackCount"] intValue];
+			labelInfo.subscribeCount = [[tempDict objectForKey:@"subscribeCount"] intValue];
+			labelInfo.shareAcceptCount = [[tempDict objectForKey:@"shareAcceptCount"] intValue];
+			
+            [addArray addObject:labelInfo];
+            [labelInfo release];
+            
+            //过滤系统日历中的  我的日历
+            if ([labelType isEqualToString:@"0"]) {
+                [labelInfo.seqNo isEqualToString:@"10"];
+                break;
+            }
+        }
+    }
+}
+
+
+
+-(NSArray *) ParseResultToMessageInfoArray:(NSDictionary *)dict
+{
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSMutableArray * szArray=[NSMutableArray array];
+    
+    NSDictionary * var=[dict objectForKey:@"var"];
+    if(var != nil && [var isKindOfClass:[NSDictionary class]])
+    {
+//        NSString *count = [var objectForKey:@"count"];
+        NSLog(@"%@", [var objectForKey:@"count"]);
+        
+        NSArray * table=[var objectForKey:@"table"];
+        [self ParseaDataToMessageInfoArray:table :szArray];
+    }
+    
+    return szArray;
+}
+
+-(void) ParseaDataToMessageInfoArray:(NSArray *)dataArray :(NSMutableArray *)addArray
+{
+    
+    //进行139登陆操作
+    RICHINFOCDBConfig *db=[[RICHINFOCDBConfig alloc] init];
+    [db MakeDBIsExistAndOpen];
+    
+    for (id obj in dataArray) {
+        if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * tempDict=(NSDictionary *)obj;
+            
+            CMessageBoxInfo * item=[[CMessageBoxInfo alloc] init];
+            item.seqNo = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"seqno"] intValue]];
+            item.type = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"type"] intValue]];
+            item.message = [tempDict objectForKey:@"message"];
+            item.status = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"status"] intValue]];
+            item.createTime = [tempDict objectForKey:@"createTime"];
+            //活动活动信息
+            if ([item.type isEqualToString:@"1"]) {
+                item.actiSeqNo = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"refSeqNo"] intValue]];
+                RICHINFOActivityInfo *info = [db QueryRICHINFOActivityInfoFromActivityTable:item.actiSeqNo];
+                item.actiContent = info.description;
+                item.actiTitle = info.summary;
+                item.actiUin = info.attenders;
+                item.actiDateDescript = info.description;
+                item.actiSite = info.location;
+                item.actiStatus = info.myStatus;
+                item.actiStartDate= info.startDate;
+                item.actiEndDate = info.endDate;
+                item.actioffset= info.offset;
+            }
+            //日历标签信息
+            else if ([item.type isEqualToString:@"2"]){
+                item.labelSeqNo = [NSString stringWithFormat:@"%d", [[tempDict objectForKey:@"refSeqNo"] intValue]];
+                CLabelInfo *info=[db QueryLabelInfoFromCalendarTable:item.actiSeqNo];
+                if(info)
+                {
+                    item.labelName = info.labelName;
+                    item.labelColor = info.color;
+                    item.calendarCount = info.calendarCount;
+                }
+            }
+            
+            item.optflag= @"0";
+            [addArray addObject:item];
+            [item release];
+        }
+    }
+    
+    
+    [db release];
+    
+}
+
+-(void *)ParseMsgDetailResultToInfo:(NSDictionary *)dict :(CMessageBoxInfo*)info{
+    
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSDictionary * var=[dict objectForKey:@"var"];
+    if(var != nil && [var isKindOfClass:[NSDictionary class]])
+    {
+        NSString *msgType = [NSString stringWithFormat:@"%d",[[var objectForKey:@"type"] intValue]];
+		
+		if ([msgType isEqualToString:@"1"]) {
+			
+			NSDictionary *table=[var objectForKey:@"calendar"];
+			info.actiSeqNo = [NSString stringWithFormat:@"%d",[[table objectForKey:@"seqno"] intValue]];;
+			info.actiTitle = [table objectForKey:@"title"];
+			info.actiDateDescript = [table objectForKey:@"dateDescript"];
+			info.actiUin = [table objectForKey:@"uin"];
+			info.actiSite = [table objectForKey:@"site"];
+			info.actiStatus = [NSString stringWithFormat:@"%d",[[table objectForKey:@"status"] intValue]];;
+			info.actiContent = [table objectForKey:@"content"];
+			//冲突活动。
+			NSString *acticonfictList= @"";
+			NSArray * actArray=[table objectForKey:@"conflictList"];
+			for (id Obj in actArray) {
+				
+				if(Obj != nil && [Obj isKindOfClass:[NSDictionary class]])
+				{
+					NSDictionary *  data =(NSDictionary *)Obj;
+					
+					NSString * mobile=@"";
+					mobile = [NSString stringWithFormat:@"%d", [[data objectForKey:@"seqno"] intValue]];
+					acticonfictList =  [acticonfictList stringByAppendingString:mobile];
+					acticonfictList = [acticonfictList stringByAppendingString:@","];
+
+					mobile = [data objectForKey:@"title"];
+					acticonfictList = [acticonfictList stringByAppendingString:mobile];
+					acticonfictList =[acticonfictList stringByAppendingString:@";"];
+					
+
+				}
+			}
+			info.acticonfictList = acticonfictList;
+		}
+		else if ([msgType isEqualToString:@"2"]){
+			NSDictionary *table=[var objectForKey:@"label"];
+			
+			info.labelSeqNo = [NSString stringWithFormat:@"%d",[[table objectForKey:@"seqno"] intValue]];;
+			info.labelName = [table objectForKey:@"labelName"];
+			info.labelColor = [table objectForKey:@"color"];
+			info.labelUin = [table objectForKey:@"uin"];
+			info.calendarCount = [[table objectForKey:@"calendarCount"]  intValue];
+			info.labelStatus = [NSString stringWithFormat:@"%d",[[table objectForKey:@"status"] intValue]];;
+
+		}
+		
+    }
+    
+    
+    return nil;
+}
+// 保存服务器端数据
+-(NSArray *) ParseResultToContactorArray:(NSDictionary *)dict
+{
+    //将结果转成数组里
+    if(dict == nil) return nil;
+    
+    NSMutableArray * szArray=[NSMutableArray array];
+
+    if(dict != nil && [dict isKindOfClass:[NSDictionary class]])
+    {
+		NSArray * table=[dict objectForKey:@"Contacts"];
+        [self ParseaDataToContactorInfoArray:table :szArray];
+    }
+    
+    return szArray;
+}
+
+-(void) ParseaDataToContactorInfoArray:(NSArray *)dataArray :(NSMutableArray *)addArray
+{
+    //进行139登陆操作
+    for (id obj in dataArray) {
+        if(obj != nil && [obj isKindOfClass:[NSDictionary class]])
+        {
+            NSDictionary * tempDict=(NSDictionary *)obj;
+            NSString *sortLetter = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"b3"]] ? @"#":[tempDict objectForKey:@"b3"];
+            NSString *nameFirst = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"c"]] ? @"":[tempDict objectForKey:@"c"];
+			NSString *mobileNum1 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"p"]] ? @"":[tempDict objectForKey:@"p"];
+			NSString *mobileNum2 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"q"]] ? @"":[tempDict objectForKey:@"q"];
+			NSString *phoneNum1 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"u"]] ? @"":[tempDict objectForKey:@"u"];
+			NSString *emailAddress1 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"y"]] ? @"":[tempDict objectForKey:@"y"];
+			NSString *emailAddress2 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"z"]] ? @"":[tempDict objectForKey:@"z"];
+            
+            RFContact *contact = [[RFContact alloc] init];
+            contact.sortLetter = sortLetter;
+            contact.nameFirst = nameFirst;
+            contact.displayName = nameFirst;
+            if (![mobileNum1 isEqualToString:@""]) {
+                [contact.phoneArray addObject:mobileNum1];
+            }
+            if (![mobileNum2 isEqualToString:@""] && ![contact.phoneArray containsObject:mobileNum2]) {
+                [contact.phoneArray addObject:mobileNum2];
+            }
+            if (![phoneNum1 isEqualToString:@""] && ![contact.phoneArray containsObject:phoneNum1]) {
+                [contact.phoneArray addObject:phoneNum1];
+            }
+            if (![emailAddress1 isEqualToString:@""]) {
+                [contact.emailArray addObject:emailAddress1];
+            }
+            if (![emailAddress2 isEqualToString:@""] && ![contact.emailArray containsObject:emailAddress2]) {
+                [contact.emailArray addObject:emailAddress2];
+            }
+            [addArray addObject:contact];
+            [contact release];
+            
+            //			ContactsInfo *contact = [[ContactsInfo alloc] init];
+            //
+            //			contact.namef = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"b3"]] ? @"":[dic objectForKey:@"b3"];
+            //			contact.namefpy = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"d2"]] ? @"":[dic objectForKey:@"d2"];
+            //			contact.title = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"c"]] ? @"":[dic objectForKey:@"c"];
+            //			contact.namejp = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"d3"]] ? @"":[dic objectForKey:@"d3"];
+            //			contact.faceIcoUrl = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"b8"]] ? @"":[dic objectForKey:@"b8"];
+            //			contact.birthday = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"o"]] ? @"":[dic objectForKey:@"o"];
+            //			contact.mobileNum1 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"p"]] ? @"":[tempDict objectForKey:@"p"];
+            //			contact.mobileNum2 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"q"]] ? @"":[tempDict objectForKey:@"q"];
+            //
+            //			contact.contactID = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"sd"]] ? @"":[dic objectForKey:@"sd"];
+            //			contact.phoneNum1 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"u"]] ? @"":[tempDict objectForKey:@"u"];
+            //			contact.emailAddress1 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"y"]] ? @"":[tempDict objectForKey:@"y"];
+            //			contact.emailAddress2 = [RFUtility NSStringIsNULL:[tempDict objectForKey:@"z"]] ? @"":[tempDict objectForKey:@"z"];
+            //			[serverContactList addObject:contact];
+            //			[contact release];
+		}
+    }
+}
+
+
+-(NSDate *) FormatTimeStirngToDate:(NSDictionary *)dict :(NSString *)key1 :(NSString *)time1
+{
+    NSString * start=[dict objectForKey:key1];
+    NSDate * date=nil;
+    if(![RFUtility NSStringIsNULL:start])
+    {
+        NSNumber * starttime=[dict objectForKey:time1];
+        int vaa=[starttime intValue];
+        NSString * timeTime=[self FormatTimeVal:vaa];
+        start = [start stringByAppendingFormat:@" %@", timeTime];
+        
+        date = [RFUtility FormatDateFromNSString:start :@"yyyy-MM-dd HH:mm"];
+    }
+    return date;
+}
+
+-(NSString *)FormatTimeVal:(int)val
+{
+    int hour=val/100;
+    int minute=val-(hour*100);
+    NSString * stime=[NSString stringWithFormat:@"%02d:%02d", hour, minute];
+    return stime;
+}
+
+
+@end

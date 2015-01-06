@@ -1,0 +1,16 @@
+//
+//  ThinkMail_Attach.h
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-15.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "ThinkMail_DBConfig.h"
+#import "../ThinkMail_DataModel.h"
+@interface ThinkMail_CDBConfig (TKAttachInfoObject)
+
+-(void)insertAttach:(TKAttachInfoObject*)folder ToAccount:(NSString*)account;
+-(NSMutableArray*)qureyAttachWithAccount:(NSString*)account mid:(NSString*)mid;
+@end

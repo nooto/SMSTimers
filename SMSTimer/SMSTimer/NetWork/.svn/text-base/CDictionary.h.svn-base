@@ -1,0 +1,24 @@
+//
+//  NSMutableDictionary+ActivityDictionary.h
+//  Fragment
+//
+//  Created by 肖 高超 on 12-6-19.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "RICHINFOActivityInfo.h"
+#import "RFUtility.h"
+
+@interface NSMutableDictionary (ActivityDictionary)
+
+//创建保存数据库Dictionary
++(id) CreateDictionaryData:(RICHINFOActivityInfo*)info;
++(id) CreateDictionaryDataByIntiviytActivity:(RICHINFOActivityInfo*)item;
+
++(id) CreateDictionaryDataByInviteInfo:(InviteInfo*)item;
+
++(id) CreateDictionaryDataBylabel:(CLabelInfo*)item;
++(id) CreateDictionaryDataByMessageInfo:(CMessageBoxInfo*)item;
+
+@end

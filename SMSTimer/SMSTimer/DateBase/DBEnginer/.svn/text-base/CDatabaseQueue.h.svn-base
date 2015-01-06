@@ -1,0 +1,38 @@
+//
+//  ThinkMail_DatabasePool.h
+//  ThinkMail_DB
+//
+//  Created by August Mueller on 6/22/11.
+//  Copyright 2011 Flying Meat Inc. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "sqlite3.h"
+
+@class ThinkMail_Database;
+
+@interface ThinkMail_DatabaseQueue : NSObject {
+    NSString            *_path;
+    dispatch_queue_t    _queue;
+    ThinkMail_Database          *_db;
+}
+
+@property (retain) NSString *path;
+
++ (id)databaseQueueWithPath:(NSString*)aPath;
+- (id)initWithPath:(NSString*)aPath;
+- (void)close;
+
+- (void)inDatabase:(void (^)(ThinkMail_Database *db))block;
+
+- (void)inTransaction:(void (^)(ThinkMail_Database *db, BOOL *rollback))block;
+- (void)inDeferredTransaction:(void (^)(ThinkMail_Database *db, BOOL *rollback))block;
+
+#if SQLITE_VERSION_NUMBER >= 3007000
+// NOTE: you can not nest these, since calling it will pull another database out of the pool and you'll get a deadlock.
+// If you need to nest, use ThinkMail_Database's startSavePointWithName:error: instead.
+- (NSError*)inSavePoint:(void (^)(ThinkMail_Database *db, BOOL *rollback))block;
+#endif
+
+@end
+

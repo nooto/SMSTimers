@@ -1,0 +1,19 @@
+//
+//  ThinkMailDictionary.h
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-14.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#import "ThinkMail_DataModel.h"
+
+@interface NSMutableDictionary (TKResponseModel_MessageData)
+
++(id)CreateMessageDataDictionary:(TKResponseModel_MessageData*)info;
++(id)CreateMessageinfoDictionary:(TKResponsedModel_MessageInfo*)info;
++(id)CreateFolderDictionaryData:(TKResponseDModel_FolderData*)info;
++(id)CreateAttachDictionaryData:(TKAttachInfoObject*)info;
+@end

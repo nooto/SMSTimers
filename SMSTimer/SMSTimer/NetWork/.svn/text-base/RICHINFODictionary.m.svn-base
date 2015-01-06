@@ -1,0 +1,358 @@
+//
+//  NSMutableDictionary+ActivityDictionary.m
+//  Fragment
+//
+//  Created by 肖 高超 on 12-6-19.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+
+#import "RICHINFODictionary.h"
+#import "RICHINFOActivityInfo.h"
+@implementation NSMutableDictionary (RICHINFOActivityInfo)
+
++(id) CreateDictionaryData:(RICHINFOActivityInfo*)item
+{
+    NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+	[dicData setValue:item.activityID forKey:@"ciid"];
+    [dicData setValue:item.summary forKey:@"summary"];
+    [dicData setValue:( item.location.length > 0 ? item.location :@"") forKey:@"location"];
+    
+    [dicData setValue:item.createrAccount forKey:@"account"];
+
+    if(nil!=item.category && ![item.category isEqualToString:@"-1"])
+    {
+        [dicData setValue:item.category forKey:@"typeid"];
+        [dicData setValue:item.categoryName forKey:@"typeresume"];
+    }
+    
+    if(nil!=item.labelid && ![item.labelid isEqualToString:@"-1"])
+    {
+        [dicData setValue:item.labelid forKey:@"labelid"];
+        [dicData setValue:item.labelName forKey:@"labelname"];
+    }
+	[dicData setValue:item.labelColor forKey:@"labelcolor"];
+	
+	[dicData setValue:( item.activityStatus.length > 0 ? item.activityStatus :@"0") forKey:@"activityStatus"];
+
+    [dicData setValue:( item.authAccount.length > 0 ? item.authAccount :@"") forKey:@"authAccount"];
+    [dicData setValue:( item.isNormalActivity ?@"1":@"0") forKey:@"normalactivity"];
+    [dicData setValue:( item.isFullday ?@"1":@"0") forKey:@"fullday"];
+    [dicData setValue:( item.alarm.length > 0 ? item.alarm :@"0") forKey:@"alarm"];
+    [dicData setValue:( item.recEmail.length > 0 ? item.recEmail :@"0") forKey:@"recEmail"];
+    [dicData setValue:( item.recMobile.length > 0 ? item.recMobile :@"0") forKey:@"recMobile"];
+    [dicData setValue:( item.recMySms.length > 0 ? item.recMySms :@"0") forKey:@"recMySms"];
+    [dicData setValue:( item.recMyEmail.length > 0 ? item.recMyEmail :@"0") forKey:@"recMyEmail"];
+    
+    if(![RFUtility NSStringIsNULL:item.offset])
+        [dicData setValue:item.offset forKey:@"offset"];
+    else
+        [dicData setValue:@"15" forKey:@"offset"];
+    
+    if([item.description length]>0)
+    {
+        [dicData setValue:item.description forKey:@"description"];
+    }
+    else
+    {
+        [dicData setValue:@"" forKey:@"description"];
+    }
+    if([item.attenders length]>0)
+    {
+        [dicData setValue:item.attenders forKey:@"attendee"];
+    }
+    else
+    {
+        [dicData setValue:@"" forKey:@"attendee"];
+    }
+    if([item.attachments length]>0)
+    {
+        [dicData setValue:item.attachments forKey:@"attach"];
+    }
+    else
+    {
+        [dicData setValue:@"" forKey:@"attach"];
+    }
+    
+    if(item.startDate != nil)
+        [dicData setValue:item.startDate forKey:@"dtstart"];
+    if(item.endDate != nil)
+        [dicData setValue:item.endDate forKey:@"dtend"];
+    
+    [dicData setValue:item.sendInterval forKey:@"sendInterval"];
+    [dicData setValue:item.week forKey:@"week"];
+
+    [dicData setValue:item.sendInterValEndTime forKey:@"sendInterValEndTime"];
+    [dicData setValue:item.isSubCalendar forKey:@"isSubCalendar"];
+    [dicData setValue:item.isSharedCalendar forKey:@"isSharedCalendar"];
+    [dicData setValue:item.isInvitedCalendar forKey:@"isInvitedCalendar"];
+
+    return dicData;
+}
+
+
++(id) CreateDictionaryDataByIntiviytActivity:(RICHINFOActivityInfo*)item
+{
+    NSMutableDictionary *dicData = [NSMutableDictionary CreateDictionaryData:item];
+    if(![RFUtility NSStringIsNULL:item.createrID])
+    {
+        [dicData setValue:item.createrID forKey:@"uid"];
+    }
+    if(![RFUtility NSStringIsNULL:item.createrAccount])
+    {
+        [dicData setValue:item.createrAccount forKey:@"account"];
+    }
+    if(![RFUtility NSStringIsNULL:item.myStatus])
+    {
+        [dicData setValue:item.myStatus forKey:@"astatus"];
+    }
+    if(![RFUtility NSStringIsNULL:item.activityID])
+    {
+        [dicData setValue:item.activityID forKey:@"ciid"];
+    }
+    [dicData setValue:@"0" forKey:@"optflag"];
+    return dicData;
+}
+
++(id) CreateDictionaryDataByInviteInfo:(InviteInfo *)item{
+    NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+    //标签类型
+    [dicData setValue:@"0" forKey:@"seqNo"];
+    [dicData setValue:(item.inviterUin.length>0 ? item.inviterUin :@"0")     forKey:@"inviterUin"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.recMySms]       forKey:@"recMySms"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.recMyEmail]     forKey:@"recMyEmail"];
+    [dicData setValue:(item.recMobile.length>0 ? item.recMobile :@"0")       forKey:@"recMobile"];
+    [dicData setValue:(item.recEmail.length>0 ? item.recEmail :@"0")         forKey:@"recEmail"];
+
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.inviteAuth]     forKey:@"inviteAuth"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.status]         forKey:@"status"];
+    [dicData setValue:(item.refuseResion.length>0 ? item.refuseResion :@"0") forKey:@"refuseResion"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.smsNotify]      forKey:@"smsNotify"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.emailNotify]    forKey:@"emailNotify"];
+
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.beforeType]     forKey:@"beforeType"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.beforeTime]     forKey:@"beforeTime"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.enabel]         forKey:@"enabel"];
+    
+	return dicData;
+}
+
+
++(id) CreateDictionaryDataBylabel:(CLabelInfo *)item
+{    
+    NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+    //标签类型
+    [dicData setValue:(item.LabelType.length>0 ? item.LabelType : @"0")
+                forKey:@"LabelType"];
+    
+    //标签主键
+    [dicData setValue:(item.seqNo.length>0 ? item.seqNo : @"1")
+                forKey:@"seqNo"];
+    
+    //标签主键
+    [dicData setValue:(item.uin.length>0 ? item.uin : @"1")
+                forKey:@"uin"];
+    
+    //标签名字
+    [dicData setValue:(item.labelName.length>0 ? item.labelName : @"新建日历")
+                forKey:@"labelName"];
+    
+    //标签描述
+    [dicData setValue:(item.description.length>0 ? item.description : @"")
+                forKey:@"description"];
+    
+    //标签颜色
+    [dicData setValue:(item.color.length>0 ? item.color : @"#000000")
+                forKey:@"color"];
+
+    //是否共享
+    [dicData setValue:(item.isShare.length>0 ? item.isShare : @"0")
+                forKey:@"isShare"];
+    
+    //是否公开
+    [dicData setValue:(item.isPublic.length>0 ? item.isPublic : @"0")
+                forKey:@"isPublic"];
+    
+    [dicData setValue:(item.author.length>0 ? item.author : @"0")
+                forKey:@"author"];
+    
+    
+    //日历下的活动个数
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.calendarCount]
+                forKey:@"calendarCount"];
+    
+	[dicData setValue:[NSString stringWithFormat:@"%d", item.shareAcceptCount]
+			   forKey:@"shareAcceptCount"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.shareCount]
+			   forKey:@"shareCount"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.shareNoFeedbackCount]
+			   forKey:@"shareNoFeedbackCount"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.shareRefuseCount]
+			   forKey:@"shareRefuseCount"];
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.subscribeCount]
+			   forKey:@"subscribeCount"];
+
+    //创建时间
+    [dicData setValue:(item.createTime != nil ? item.createTime : @"")
+                forKey:@"createTime"];
+    
+    //修改时间
+    [dicData setValue:(item.modifyTime != nil ? item.modifyTime : @"")
+                forKey:@"modifyTime"];
+	
+	[dicData setValue:(item.subscribedTime.length>0 ? item.subscribedTime : @"0")
+			   forKey:@"subscribedTime"];
+
+    [dicData setValue:(item.updateCalendarSmsNotify.length>0 ? item.updateCalendarSmsNotify : @"0")
+                forKey:@"updateCalendarSmsNotify"];
+    
+    [dicData setValue:(item.CalendarEmailNotifyNew.length>0 ? item.CalendarEmailNotifyNew : @"0")
+                forKey:@"CalendarEmailNotifyNew"];
+    
+    [dicData setValue:(item.CalendarSmsNotifyNew.length>0 ? item.CalendarSmsNotifyNew : @"0")
+                forKey:@"CalendarSmsNotifyNew"];
+    
+    [dicData setValue:(item.updateCalendarEmailNotify.length>0 ? item.updateCalendarEmailNotify : @"0")
+                forKey:@"updateCalendarEmailNotify"];
+    
+    [dicData setValue:(item.deleteCalendarEmailNotify.length>0 ? item.deleteCalendarEmailNotify : @"0")
+                forKey:@"deleteCalendarEmailNotify"];
+    
+    [dicData setValue:(item.deleteCalendarSmsNotify.length>0 ? item.deleteCalendarSmsNotify : @"0")
+                forKey:@"deleteCalendarSmsNotify"];
+    
+    [dicData setValue:(item.authUin.length>0 ? item.authUin : @"0")
+                forKey:@"authUin"];
+    
+    [dicData setValue:(item.shareUin.length>0 ? item.shareUin : @"0")
+                forKey:@"shareUin"];
+    
+    [dicData setValue:(item.shareType.length>0 ? item.shareType : @"0")
+                forKey:@"shareType"];
+    
+    [dicData setValue:(item.status.length>0 ? item.status : @"0")
+                forKey:@"status"];
+    
+    [dicData setValue:(item.refuseResion.length>0 ? item.refuseResion : @"0")
+                forKey:@"refuseResion"];
+    
+    [dicData setValue:(item.smsNotify.length>0 ? item.smsNotify : @"0")
+                forKey:@"smsNotify"];
+    
+    [dicData setValue:(item.emailNotify.length>0 ? item.emailNotify : @"0")
+                forKey:@"emailNotify"];
+    
+    [dicData setValue:(item.newshareCalendarEmailNotify.length>0 ? item.newshareCalendarEmailNotify : @"0")
+                forKey:@"newshareCalendarEmailNotify"];
+    
+    [dicData setValue:(item.newshareCalendarSmsNotify.length>0 ? item.newshareCalendarSmsNotify : @"0")
+                forKey:@"newshareCalendarSmsNotify"];
+    
+    [dicData setValue:(item.updateshareCalendarEmailNotify.length>0 ? item.updateshareCalendarEmailNotify : @"0")
+                forKey:@"updateshareCalendarEmailNotify"];
+    
+    [dicData setValue:(item.updateshareCalendarSmsNotify.length>0 ? item.updateshareCalendarSmsNotify : @"0")
+                forKey:@"updateshareCalendarSmsNotify"];
+    
+    [dicData setValue:(item.deleteCalendarSmsNotify.length>0 ? item.deleteCalendarSmsNotify : @"0")
+                forKey:@"deleteCalendarSmsNotify"];
+    
+    [dicData setValue:(item.deleteshareCalendarEmailNotify.length>0 ? item.deleteshareCalendarEmailNotify : @"0")
+                forKey:@"deleteshareCalendarEmailNotify"];
+    
+    [dicData setValue:@"0" forKey:@"optflag"];
+
+    return dicData;
+}
+
++(id) CreateDictionaryDataByMessageInfo:(CMessageBoxInfo *)item
+{
+    NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+    //消息id
+    [dicData setValue:(item.seqNo.length>0 ? item.seqNo :@"0")
+                forKey:@"seqNo"];
+    
+    //消息类型
+    [dicData setValue:(item.type.length>0 ? item.type :@"1")
+                forKey:@"type"];
+    
+    ////您的好友+邮箱地址+邀请你参加活动”
+    [dicData setValue:(item.message.length>0 ? item.message : @"message")
+                forKey:@"message"];
+    
+    //是否已读
+    [dicData setValue:(item.status.length>0 ? item.status : @"")
+                forKey:@"status"];
+    
+    //创建时间
+    [dicData setValue:(item.createTime != nil ? item.createTime : @"")
+                forKey:@"createTime"];
+    
+    //活动id
+    [dicData setValue:(item.actiSeqNo.length>0 ? item.actiSeqNo : @"0")
+                forKey:@"actiSeqNo"];
+    //
+    [dicData setValue:(item.actiTitle.length>0 ? item.actiTitle : @"0")
+                forKey:@"actiTitle"];
+    //
+    [dicData setValue:(item.actiContent.length>0 ? item.actiContent : @"0")
+                forKey:@"actiContent"];
+    //
+    [dicData setValue:(item.actiUin.length>0 ? item.actiUin : @"0")
+                forKey:@"actiUin"];
+    //
+    [dicData setValue:(item.actiDateDescript.length>0 ? item.actiDateDescript : @"0")
+                forKey:@"actiDateDescript"];
+    //
+    [dicData setValue:(item.actiSite.length>0 ? item.actiSite : @"0")
+                forKey:@"actiSite"];
+	
+	[dicData setValue:item.actiStartDate forKey:@"dtstart"];
+	
+	[dicData setValue:item.actiEndDate forKey:@"dtend"];
+    
+	[dicData setValue:(item.actioffset.length>0 ? item.actioffset : @"0")
+			   forKey:@"offset"];
+    
+	[dicData setValue:(item.actiSite.length>0 ? item.actiSite : @"0")
+			   forKey:@"actiSite"];
+	
+    //
+    [dicData setValue:(item.actiStatus.length>0 ? item.actiStatus : @"0")
+                forKey:@"actiStatus"];
+    //
+    [dicData setValue:(item.acticonfictList.length>0 ? item.acticonfictList : @"0")
+                forKey:@"acticonfictList"];
+
+    //日历
+    [dicData setValue:(item.labelSeqNo.length>0 ? item.labelSeqNo : @"0")
+                forKey:@"labelSeqNo"];
+    
+    //
+    [dicData setValue:(item.labelName.length>0 ? item.labelName : @"0")
+                forKey:@"labelName"];
+    
+    //
+    [dicData setValue:(item.labelColor.length>0 ? item.labelColor : @"0")
+                forKey:@"labelColor"];
+    
+    //
+    [dicData setValue:(item.labelUin.length>0 ? item.labelUin : @"0")
+                forKey:@"labelUin"];
+    
+    //
+    [dicData setValue:[NSString stringWithFormat:@"%d", item.calendarCount] forKey:@"calendarCount"];
+    
+    //
+    [dicData setValue:(item.labelStatus.length>0 ? item.labelStatus : @"0")
+                forKey:@"labelStatus"];
+        
+    //
+    [dicData setValue:(item.optflag.length>0 ? item.optflag : @"0")
+                forKey:@"optflag"];
+        
+    return dicData;
+}
+
+
+
+@end

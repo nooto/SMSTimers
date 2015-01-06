@@ -1,0 +1,128 @@
+//
+//  ThinkMailDictionary.m
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-14.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import "ThinkMailDictionary.h"
+
+@implementation NSMutableDictionary (TKResponseModel_MessageData)
++(id) CreateMessageDataDictionary:(TKResponseModel_MessageData*)item{
+	NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+	[dicData setValue:item.mid forKey:@"mid"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.fid] forKey:@"fid"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.mailSession] forKey:@"mailSession"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.size] forKey:@"size"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.sendDate] forKey:@"sendDate"];
+	
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.receiveDate] forKey:@"receiveDate"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.modifyDate] forKey:@"modifyDate"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.taskDate] forKey:@"taskDate"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.priority] forKey:@"priority"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.color] forKey:@"color"];
+
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.denyForward] forKey:@"denyForward"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.antivirusStatus] forKey:@"antivirusStatus"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.rcptFlag] forKey:@"rcptFlag"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.attachmentNum] forKey:@"attachmentNum"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.mailNum] forKey:@"mailNum"];
+
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.meetingFlag] forKey:@"meetingFlag"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.mailFlag] forKey:@"mailFlag"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.starType] forKey:@"starType"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.logoType] forKey:@"logoType"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.billType] forKey:@"billType"];
+
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.flagObject.read] forKey:@"read"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.flagObject.starFlag] forKey:@"starFlag"];
+
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.securityLevel] forKey:@"securityLevel"];
+	//	@property (nonatomic, strong) NSDictionary      *flags;
+	//	@property (nonatomic, strong) NSDictionary      *label;
+    [dicData setValue:item.from forKey:@"fromMail"];
+
+	[dicData setValue:item.to forKey:@"toMail"];
+    [dicData setValue:item.subject forKey:@"subject"];
+    [dicData setValue:item.summary forKey:@"summary"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.auditStatus] forKey:@"auditStatus"];
+
+	
+    return dicData;
+}
+
++(id) CreateMessageinfoDictionary:(TKResponsedModel_MessageInfo *)item{
+	
+	NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+	
+	[dicData setValue:item.account forKey:@"account"];
+	[dicData setValue:item.mid forKey:@"omid"];
+	[dicData setValue:item.to forKey:@"toMail"];
+	[dicData setValue:item.cc forKey:@"cc"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.requestReadReceipt] forKey:@"requestReadReceipt"];
+	
+	[dicData setValue:item.subject forKey:@"subject"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.sendDate] forKey:@"sendDate"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.priority] forKey:@"priority"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.isHtml] forKey:@"isHtml"];
+	[dicData setValue:item.html.content forKey:@"htmlContent"];
+	
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.denyForward] forKey:@"denyForward"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.sendWay] forKey:@"sendWay"];
+	[dicData setValue:item.headerRaw forKey:@"headerRaw"];
+	[dicData setValue:item.sessionMails forKey:@"sessionMails"];
+    return dicData;
+}
+
++(id)CreateFolderDictionaryData:(TKResponseDModel_FolderData *)item{
+	
+	NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+	[dicData setValue:item.name forKey:@"name"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.fid] forKey:@"fid"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.folderColor] forKey:@"folderColor"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.folderPassFlag] forKey:@"folderPassFlag"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.hideFlag] forKey:@"hideFlag"];
+	
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.keepPeriod] forKey:@"keepPeriod"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.location] forKey:@"location"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.parentId] forKey:@"parentId"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.pop3Flag] forKey:@"pop3Flag"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.reserve] forKey:@"reserve"];
+	
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.type] forKey:@"type"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.vipFlag] forKey:@"vipFlag"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.messageCount] forKey:@"messageCount"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.messageSize] forKey:@"messageSize"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.unreadMessageCount] forKey:@"unreadMessageCount"];
+	
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.unreadMessageSize] forKey:@"unreadMessageSize"];
+	//	@property (nonatomic, strong) TKResponseDModel_StatsData* stats;  // TKResponseDModel_StatsData 邮件统计状态，请求中stats值为1时才返回
+    return dicData;
+}
+
++(id)CreateAttachDictionaryData:(TKAttachInfoObject*)item{
+
+	NSMutableDictionary *dicData = [NSMutableDictionary dictionary];
+	[dicData setValue:item.mid forKey:@"mid"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.fid] forKey:@"fid"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.sendDate] forKey:@"sendDate"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.receiveDate] forKey:@"receiveDate"];
+	[dicData setValue:item.from forKey:@"fromMail"];
+
+	[dicData setValue:item.to forKey:@"toMail"];
+	[dicData setValue:item.subject forKey:@"subject"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.attachHeadOffset] forKey:@"attachHeadOffset"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.attachOffset] forKey:@"attachOffset"];
+	[dicData setValue:item.attachType forKey:@"attachType"];
+
+	[dicData setValue:item.attachName forKey:@"attachName"];
+	[dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.attachSize] forKey:@"attachSize"];
+    [dicData setValue:[NSString stringWithFormat:@"%ld",(long)item.attachRealSize] forKey:@"attachRealSize"];
+	[dicData setValue:item.attachContentType forKey:@"attachContentType"];
+	[dicData setValue:item.encode forKey:@"encode"];
+	
+    return dicData;
+}
+
+@end

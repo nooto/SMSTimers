@@ -1,0 +1,72 @@
+//
+//  RICHINFOXmlCtrl.h
+//  Fragment
+//
+//  Created by zhang on 13-5-13.
+//
+//
+
+#import <Foundation/Foundation.h>
+#import "RICHINFOActivityInfo.h"
+#import "RFUtility.h"
+
+@interface RICHINFOXmlCtrl: NSObject
+{
+    
+}
+
++(NSString *) ConvertActivityToXmlString:(RICHINFOActivityInfo *)acInfo :(BOOL)isUpdate;
++(NSString *) ConvertActivityToCanCelOrDelete:(RICHINFOActivityInfo *)acInfo type:(NSString *)actionType;
++(NSString *) QueryActivityXmlString:(NSString *)page size:(NSString *)number type:(NSString *)actionType;
+
+//actionType	是	Int	0：接受操作  1：拒绝操作 2:删除
+//seqNos	是	Int	邀请的活动ID
+//refuseResion	否	String	如果是拒绝的操作，填写拒绝的原因
++(NSString *) YqOrRejectActivityXmlString:(NSString *)desc sid:(NSString *)seqNos type:(NSString *)actionType;
+
+//sTime	是	起码时间
+//endTime	结束时间
++(NSString *) SyncActivityXmlString:(NSString *)sTime etime:(NSString *)endTime;
++(NSString *) GetYqActivityXmlString:(NSString *)page size:(NSString *)size;
+//获得活动详细的XML
++(NSString *) GetInfoActivityXmlString:(NSString *)seqNo type:(NSString*)tpye;
++(NSDictionary *) ParseQueryXmlFromData:(NSData *)xmlData;
+
+//互殴设置个性化提醒时间
++(NSString *) GetYqSetRemindXmlString:(RICHINFOActivityInfo *)actiInfo;
+
+
++(NSString *) GetActivityViewXmlString:(NSString *)sTime etime:(NSString *)endTime;
+
+
+//获取日历标签 XML
++(NSString *) QueryCalendarLabelXmlString:(NSString *)seqNo;
++(NSString *) AddCalendarLabelXmlString:(CLabelInfo *)info;
++(NSString *) ModifyCalendarLabelXmlString:(CLabelInfo *)info;
++(NSString *) DeleteCalendarLabelXmlString:(CLabelInfo *)info;
++(NSString *) CancelSubCalendarLabelXmlString:(CLabelInfo *)labelInfo;
++(NSString *) GetCalendarLabelDetailByidXmlString:(NSString *)seqNo;
++(NSString *) ProcessShareLabelsXmlString:(NSString *)desc sid:(NSString *)seqNos type:(NSString *)actionType;
++(NSString *) CancelLabelShareXmlString:(CLabelInfo *)labelInfo;
+
+///////////
++(NSString *)GetLogin139MailXmlString:(NSString *)name pwd:(NSString *)pwd;
++(NSDictionary *) ParseLogin139MailXml:(NSString *)xmlPath;
++(NSDictionary *) ParseLogin139MailXmlFromData:(NSData *)xmlData;
+
+//消息盒子
+//查询消息盒子信息数
++(NSString *) GetMsgCountXmlString;
+//查询消息列表
++(NSString *) GetMsgListXmlString:(NSString *)page size:(NSString *)size;
+//查询消息详情
++(NSString *) GetMsgDeatilXmlString:(NSString *)msgId;
+
+//删除消息
++(NSString *) GetMsgDeleteXmlString:(NSString *)msgId;
+
++(NSString *) GetUserAddrJsonDataXmlString;
+//添加黑白名单
++(NSString *) GetMsgBlackWhiteXmlString:(CMessageBoxInfo *)msgInfo type:(NSString *)type;
++(NSString *) GetMsgBlackWhiteXmlString:(NSString *)uin;
+@end

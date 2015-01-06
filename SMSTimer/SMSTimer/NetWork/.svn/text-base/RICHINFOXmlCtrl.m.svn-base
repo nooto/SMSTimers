@@ -1,0 +1,911 @@
+//
+//  RICHINFOXmlCtrl.m
+//  Fragment
+//
+//  Created by zhang on 13-5-13.
+//
+//
+
+#import "RICHINFOXmlCtrl.h"
+#import "RICHINFOGDataXMLNode.h"
+#import "RFUtility.h"
+#import "RICHINFO_ydsw_activity.h"
+
+#import "RICHINFORequestCtrl.h"
+
+@implementation RICHINFOXmlCtrl
+
++(NSString *) GetHMFromDate:(NSDate *)date
+{
+    if(date == nil) return nil;
+    
+//    CFGregorianDate tempDate=[RFUtility FormatNSDate:date];
+	NSDateComponents *endComponents = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:date];
+    NSString * tempText=[NSString stringWithFormat:@"%02d%02d", endComponents.hour, endComponents.minute];
+    return tempText;
+}
+
++(NSString *) GetYMDFromDate:(NSDate *)date
+{
+    if(date == nil) return nil;
+    
+//    CFGregorianDate tempDate=[RFUtility FormatNSDate:date];
+	NSDateComponents *endComponents = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:date];
+    NSString * tempText=[NSString stringWithFormat:@"%04d-%02d-%02d", (int)endComponents.year, endComponents.month, endComponents.day];
+    return tempText;
+}
+
+
+#pragma mark - 日历部分。
+
++(NSString *) QueryActivityXmlString:(NSString *)page size:(NSString *)number type:(NSString *)actionType
+{    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3" attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:page attriName:@"name" AttVal:@"pageIndex"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:number attriName:@"name" AttVal:@"pageSize"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actionType attriName:@"name" AttVal:@"actionType"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    return tempText;
+}
+
+//actionType	是	Int	0：接受操作  1：拒绝操作 2:删除
+//seqNos	是	Int	邀请的活动ID
+//refuseResion	否	String	如果是拒绝的操作，填写拒绝的原因
++(NSString *) YqOrRejectActivityXmlString:(NSString *)desc sid:(NSString *)seqNos type:(NSString *)actionType
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actionType attriName:@"name" AttVal:@"actionType"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:seqNos attriName:@"name" AttVal:@"seqNos"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:desc attriName:@"name" AttVal:@"refuseResion"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+//sTime	是	起码时间
+//endTime	结束时间
++(NSString *) SyncActivityXmlString:(NSString *)sTime etime:(NSString *)endTime
+{
+    if([RFUtility NSStringIsNULL:sTime]) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+         [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    if(![RFUtility NSStringIsNULL:sTime])
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:sTime attriName:@"name" AttVal:@"startTime"];
+    if(![RFUtility NSStringIsNULL:endTime])
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:endTime attriName:@"name" AttVal:@"endTime"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+//获得活动邀请的XML
++(NSString *) GetYqActivityXmlString:(NSString *)page size:(NSString *)size
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:page attriName:@"name" AttVal:@"pageIndex"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:size attriName:@"name" AttVal:@"pageSize"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+//获得活动邀请的XML
++(NSString *) GetYqSetRemindXmlString:(RICHINFOActivityInfo *)actiInfo
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actiInfo.activityID attriName:@"name" AttVal:@"seqNo"];
+	
+//	0: 自已的	1: 邀请活动2：共享活动 3: 订阅活动
+	NSString *typesTR = @"0";
+	if ([actiInfo.isSubCalendar isEqualToString:@"1"]) {
+		typesTR = @"3";
+	}
+	else if ([actiInfo.isSharedCalendar isEqualToString:@"1"]){
+		typesTR = @"2";
+	}
+	else if ([actiInfo.isInvitedCalendar isEqualToString:@"1"]){
+		typesTR = @"1";
+	}
+	else{
+		typesTR = @"0";
+	}
+   [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:typesTR attriName:@"name" AttVal:@"type"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actiInfo.recMySms attriName:@"name" AttVal:@"recMySms"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actiInfo.recMyEmail attriName:@"name" AttVal:@"recMyEmail"];
+	
+    int minute=[actiInfo.offset intValue];
+    if(minute==-1)
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"beforeType"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"beforeTime"];
+    }
+    else if(minute<60)//表示没有选择提醒
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"beforeType"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actiInfo.offset attriName:@"name" AttVal:@"beforeTime"];
+    }
+    else if(minute<1440)
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"1" attriName:@"name" AttVal:@"beforeType"];
+        int hour=minute/60;
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:[NSString stringWithFormat:@"%d",hour] attriName:@"name" AttVal:@"beforeTime"];
+    }
+    else
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"2" attriName:@"name" AttVal:@"beforeType"];
+        int day=minute/1440;
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:[NSString stringWithFormat:@"%d",day] attriName:@"name" AttVal:@"beforeTime"];
+    }
+	if(minute==-1)//不提醒,enable=0
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"enable"];
+	else
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"1" attriName:@"name" AttVal:@"enable"];
+
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    return tempText;
+}
+
+
+
+//获得活动详细的XML
++(NSString *) GetInfoActivityXmlString:(NSString *)seqNo type:(NSString*)type
+{
+    if([RFUtility NSStringIsNULL:seqNo]) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:seqNo attriName:@"name" AttVal:@"seqNo"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:type attriName:@"name" AttVal:@"type"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    return tempText;
+}
+
+
+//sTime	是	起码时间
+//endTime	结束时间
++(NSString *) GetActivityViewXmlString:(NSString *)sTime etime:(NSString *)endTime
+{
+    if([RFUtility NSStringIsNULL:sTime]) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+	[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    if(![RFUtility NSStringIsNULL:sTime])
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:sTime attriName:@"name" AttVal:@"startDate"];
+    if(![RFUtility NSStringIsNULL:endTime])
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:endTime attriName:@"name" AttVal:@"endDate"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+//
++(NSDictionary *) ParseQueryXmlFromData:(NSData *)xmlData
+{
+    NSMutableDictionary * dict=[NSMutableDictionary dictionary];
+    NSError *error;
+    RICHINFOGDataXMLDocument *doc = [[RICHINFOGDataXMLDocument alloc] initWithData:xmlData options:0 error:&error];
+    if (doc == nil) { return nil; }
+    
+    NSArray *partyMembers = [doc nodesForXPath:@"return" error:&error];
+    for (RICHINFOGDataXMLElement *partyMember in partyMembers) {
+        // result
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"var"];
+        
+        // description
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"code"];
+        
+        // description
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"summary"];
+        
+    }
+    [doc release];
+    
+    return dict;
+}
+
+#pragma mark - 日历标签
+#pragma mark
+//查询标签
++(NSString *) QueryCalendarLabelXmlString:(NSString *)actionType
+{
+    if([RFUtility NSStringIsNULL:actionType]) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actionType attriName:@"name" AttVal:@"actionType"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+//新建标签
++(NSString *) AddCalendarLabelXmlString:(CLabelInfo *)labelInfo
+{
+    if(labelInfo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int"    val:@"3"                   attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:labelInfo.labelName   attriName:@"name" AttVal:@"labelName"];
+	[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int"    val:labelInfo.seqNo       attriName:@"name" AttVal:@"labelId"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:labelInfo.color       attriName:@"name" AttVal:@"color"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:labelInfo.description attriName:@"name" AttVal:@"description"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int"    val:labelInfo.isShare                  attriName:@"name" AttVal:@"isShare"];
+
+	RICHINFOGDataXMLElement * secondElement = [RICHINFOGDataXMLNode elementWithName:@"array"];
+    [RICHINFOXmlCtrl AddElementAttri:secondElement name:@"name" val:@"labelShareInfo"];
+    [RICHINFOXmlCtrl GetTheShareInfoXmlElement:secondElement :labelInfo];
+    [partyElement addChild:secondElement];    
+	
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    return tempText;
+}
+
+
++(RICHINFOGDataXMLElement *) GetTheShareInfoXmlElement:(RICHINFOGDataXMLElement *)secondElement :(CLabelInfo *)lableInfo
+{
+	//    NSString *attenders=acInfo.attenders;
+	//    NSArray *arr=[attenders componentsSeparatedByString:@";"];
+    int count = [lableInfo.arrlabelShareInfo count];
+    for(int index=0;index<count;index++)
+    {
+        CLabelShareInfo * inviteInfo=[lableInfo.arrlabelShareInfo objectAtIndex:index];
+		
+        RICHINFOGDataXMLElement * objElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:[NSString stringWithFormat:@"%d", inviteInfo.actionType]attriName:@"name" AttVal:@"actionType"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:inviteInfo.shareUin attriName:@"name" AttVal:@"shareUin"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:inviteInfo.shareType attriName:@"name" AttVal:@"shareType"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:[NSString stringWithFormat:@"%d", inviteInfo.smsNotify] attriName:@"name" AttVal:@"smsNotify"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:[NSString stringWithFormat:@"%d", inviteInfo.emailNotify] attriName:@"name" AttVal:@"emailNotify"];
+        
+        [secondElement addChild:objElement];
+    }
+    return secondElement;
+}
+
+
+//修改标签
++(NSString *) ModifyCalendarLabelXmlString:(CLabelInfo *)labelInfo
+{
+    if(labelInfo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int"    val:@"3"                   attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int"    val:labelInfo.seqNo      attriName:@"name" AttVal:@"labelId"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:labelInfo.labelName   attriName:@"name" AttVal:@"labelName"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:labelInfo.color       attriName:@"name" AttVal:@"color"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:labelInfo.description attriName:@"name" AttVal:@"description"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int"    val:@"1"                  attriName:@"name" AttVal:@"isNotify"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+//删除标签
++(NSString *) DeleteCalendarLabelXmlString:(CLabelInfo *)labelInfo
+{
+    if(labelInfo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"               attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:labelInfo.seqNo  attriName:@"name" AttVal:@"labelId"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0"              attriName:@"name" AttVal:@"isDelAllCals"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"1"              attriName:@"name" AttVal:@"isNotify"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+
+//取消订阅标签
++(NSString *) CancelSubCalendarLabelXmlString:(CLabelInfo *)labelInfo
+{
+    if(labelInfo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"               attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:labelInfo.seqNo   attriName:@"name" AttVal:@"labelId"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+//删除共享标签。
++(NSString *) CancelLabelShareXmlString:(CLabelInfo *)labelInfo
+{
+    if(labelInfo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+	NSString *temp  = labelInfo.seqNo;
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"               attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:temp   attriName:@"name" AttVal:@"labelId"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"1"   attriName:@"name" AttVal:@"actionType"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
++(NSString *) GetCalendarLabelDetailByidXmlString:(NSString *)seqNo
+{
+    if(seqNo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"     attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:seqNo   attriName:@"name" AttVal:@"labelId"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+//actionType	是	Int	0：接受操作  1：拒绝操作 2:删除
+//seqNos	是	Int	邀请的活动ID
+//refuseResion	否	String	如果是拒绝的操作，填写拒绝的原因
++(NSString *) ProcessShareLabelsXmlString:(NSString *)desc sid:(NSString *)seqNos type:(NSString *)actionType
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actionType attriName:@"name" AttVal:@"actionType"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:seqNos attriName:@"name" AttVal:@"seqNos"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:desc attriName:@"name" AttVal:@"refuseResion"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
++(NSString *) ConvertActivityToCanCelOrDelete:(RICHINFOActivityInfo *)acInfo type:(NSString *)actionType
+{
+    if(acInfo == nil) return nil;
+    
+    NSString * activityId=acInfo.activityID;
+    if([RFUtility NSStringIsNULL:activityId]) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.activityID attriName:@"name" AttVal:@"seqNos"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:actionType attriName:@"name" AttVal:@"actionType"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
++(NSString *) ConvertActivityToXmlString:(RICHINFOActivityInfo *)acInfo :(BOOL)isUpdate
+{
+    if(acInfo == nil) return nil;
+    
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    if(isUpdate)
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.labelid attriName:@"name" AttVal:@"labelId"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.activityID attriName:@"name" AttVal:@"seqNo"];
+    }
+    else
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.labelid attriName:@"name" AttVal:@"labelId"];
+    }
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.recMySms attriName:@"name" AttVal:@"recMySms"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.recMyEmail attriName:@"name" AttVal:@"recMyEmail"];
+	
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:[RICHINFOXmlCtrl GetHMFromDate:acInfo.startDate] attriName:@"name" AttVal:@"startTime"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:[RICHINFOXmlCtrl GetHMFromDate:acInfo.endDate] attriName:@"name" AttVal:@"endTime"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"10" attriName:@"name" AttVal:@"calendarType"];
+	[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.recEmail attriName:@"name" AttVal:@"recEmail"];
+	[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.recMobile attriName:@"name" AttVal:@"recMobile"];
+
+    int minute=[acInfo.offset intValue];
+    if(minute==-1)
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"beforeType"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"beforeTime"];
+    }
+    else if(minute<60)//表示没有选择提醒
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"beforeType"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.offset attriName:@"name" AttVal:@"beforeTime"];
+    }
+    else if(minute<1440)
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"1" attriName:@"name" AttVal:@"beforeType"];
+        int hour=minute/60;
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:[NSString stringWithFormat:@"%d",hour] attriName:@"name" AttVal:@"beforeTime"];
+    }
+    else
+    {
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"2" attriName:@"name" AttVal:@"beforeType"];
+        int day=minute/1440;
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:[NSString stringWithFormat:@"%d",day] attriName:@"name" AttVal:@"beforeTime"];
+    }
+
+	//重复活动 特殊处理
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.sendInterval attriName:@"name" AttVal:@"sendInterval"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.week attriName:@"name" AttVal:@"week"];
+	
+	//
+	NSString *dateDesc = @"";
+	if ([acInfo.sendInterval isEqualToString:SENDINTERVAL_MONTH]) {
+		
+//		<string name="endDateFlag">22</string>  每月重复只支持  日 显示。
+		NSDateComponents *startComp = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:acInfo.startDate];
+		NSDateComponents *endComp = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:acInfo.endDate];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[NSString stringWithFormat:@"%02d", startComp.day] attriName:@"name" AttVal:@"dateFlag"];
+		
+//		NSDateComponents *endComponents = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:acInfo.endDate];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[NSString stringWithFormat:@"%02d", endComp.day] attriName:@"name" AttVal:@"endDateFlag"];
+		
+		dateDesc = [NSString stringWithFormat:@"每月%d号重复",startComp.day];
+	}
+	else if ([acInfo.sendInterval isEqualToString:SENDINTERVAL_DAY]){
+		dateDesc = @"每天重复";
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[RICHINFOXmlCtrl GetYMDFromDate:acInfo.startDate] attriName:@"name" AttVal:@"dateFlag"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[RICHINFOXmlCtrl GetYMDFromDate:acInfo.endDate] attriName:@"name" AttVal:@"endDateFlag"];
+	}
+	else if ([acInfo.sendInterval isEqualToString:SENDINTERVAL_WEEK]){
+		dateDesc = @"每周重复";
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.week attriName:@"name" AttVal:@"dateFlag"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.week attriName:@"name" AttVal:@"endDateFlag"];
+
+	}
+	else if ([acInfo.sendInterval isEqualToString:SENDINTERVAL_YEAR]){
+		//		<string name="endDateFlag">22</string>  每月重复只支持  日 显示。
+		NSDateComponents *startComp = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:acInfo.startDate];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[NSString stringWithFormat:@"%02d%02d", startComp.month,startComp.day] attriName:@"name" AttVal:@"dateFlag"];
+		
+				NSDateComponents *endComponents = [CURRENT_CALENDAR components:DATE_COMPONENTS fromDate:acInfo.endDate];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[NSString stringWithFormat:@"%02d%02d", endComponents.month,endComponents.day] attriName:@"name" AttVal:@"endDateFlag"];
+		
+		dateDesc = [NSString stringWithFormat:@"每年%d月%d号重复",startComp.month,startComp.day];
+	}
+	else{
+		
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[RICHINFOXmlCtrl GetYMDFromDate:acInfo.startDate] attriName:@"name" AttVal:@"dateFlag"];
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:[RICHINFOXmlCtrl GetYMDFromDate:acInfo.endDate] attriName:@"name" AttVal:@"endDateFlag"];
+	}
+	
+	[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:dateDesc attriName:@"name" AttVal:@"dateDesc"];
+	
+//	<string name="dateDesc">每月22日</string>
+	
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.description attriName:@"name" AttVal:@"content"];
+
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.createrAccount attriName:@"name" AttVal:@"recEmail"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.location attriName:@"name" AttVal:@"site"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:acInfo.summary attriName:@"name" AttVal:@"title"];
+    
+	if ([acInfo.activityStatus isEqualToString:@"0"]) {
+		minute = -1;
+	}
+//    if(minute==-1)//不提醒,enable=0
+        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:acInfo.activityStatus attriName:@"name" AttVal:@"enable"];
+//	else
+//        [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"1" attriName:@"name" AttVal:@"enable"];
+
+    
+    RICHINFOGDataXMLElement * secondElement = [RICHINFOGDataXMLNode elementWithName:@"array"];
+    [RICHINFOXmlCtrl AddElementAttri:secondElement name:@"name" val:@"inviteInfo"];
+    [RICHINFOXmlCtrl GetTheInviteInfoXmlElement:secondElement :acInfo];
+    [partyElement addChild:secondElement];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
++(RICHINFOGDataXMLElement *) GetTheInviteInfoXmlElement:(RICHINFOGDataXMLElement *)secondElement :(RICHINFOActivityInfo *)acInfo
+{
+//	<object>
+//	<string name="inviterUin">13418682453@139.com</string>
+//	<int name="inviteAuth">2</int>
+//	<int name="actionType">0</int>
+//	<int name="recMySms">1</int>
+//	<int name="recMyEmail">1</int>
+//	<string name="recMobile">13418682453</string>
+//	<int name="smsNotify">0</int>
+//	<int name="emailNotify">1</int>
+//	<string name="recEmail">13418682453@139.com</string>
+//    </object>
+//	
+//	RICHINFOGDataXMLElement * objElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:@"13418682453@139.com" attriName:@"name" AttVal:@"inviterUin"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"2" attriName:@"name" AttVal:@"inviteAuth"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"0" attriName:@"name" AttVal:@"actionType"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"1" attriName:@"name" AttVal:@"recMySms"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"1" attriName:@"name" AttVal:@"recMyEmail"];
+//	
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:@"13418682453" attriName:@"name" AttVal:@"recMobile"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"0" attriName:@"name" AttVal:@"smsNotify"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"1" attriName:@"name" AttVal:@"emailNotify"];
+//	[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:@"13418682453@139.com" attriName:@"name" AttVal:@"recEmail"];
+//	
+//	[secondElement addChild:objElement];
+//
+//	return secondElement;
+	
+    int count = [acInfo.arrInviteInfo count];
+    for(int index=0;index<count;index++)
+    {
+        InviteInfo * inviteInfo=[acInfo.arrInviteInfo objectAtIndex:index];
+		RICHINFOGDataXMLElement * objElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+		
+		NSString *temp = @"";
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:inviteInfo.inviterUin attriName:@"name" AttVal:@"inviterUin"];
+		
+		temp = [NSString stringWithFormat:@"%d", inviteInfo.inviteAuth];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"2" attriName:@"name" AttVal:@"inviteAuth"];
+		
+		
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:@"0" attriName:@"name" AttVal:@"actionType"];
+	
+		
+		temp = [NSString stringWithFormat:@"%d", inviteInfo.recMySms];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:temp attriName:@"name" AttVal:@"recMySms"];
+		
+		temp = [NSString stringWithFormat:@"%d", inviteInfo.recMyEmail];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:temp attriName:@"name" AttVal:@"recMyEmail"];
+		
+		temp = inviteInfo.recMobile;
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:temp attriName:@"name" AttVal:@"recMobile"];
+		
+		temp = [NSString stringWithFormat:@"%d", inviteInfo.smsNotify];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:temp attriName:@"name" AttVal:@"smsNotify"];
+		
+		temp = [NSString stringWithFormat:@"%d", inviteInfo.emailNotify];
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int"    val:temp attriName:@"name" AttVal:@"emailNotify"];
+		
+		temp = inviteInfo.recEmail;
+		[RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"string" val:temp attriName:@"name" AttVal:@"recEmail"];
+		
+		[secondElement addChild:objElement];
+    }
+    
+    return secondElement;
+}
+
+
++(RICHINFOGDataXMLElement *) GetTheLabelShreInfoContactXmlElement:(RICHINFOGDataXMLElement *)secondElement :(CLabelInfo *)labelInfo
+{
+        
+        RICHINFOGDataXMLElement * objElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+        [RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:@"0" attriName:@"name" AttVal:@"actionType"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:@"0" attriName:@"name" AttVal:@"shareUin"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:@"0" attriName:@"name" AttVal:@"shareType"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:@"0" attriName:@"name" AttVal:@"smsNotify"];
+        [RICHINFOXmlCtrl AddElementValAndAttri:objElement name:@"int" val:@"0" attriName:@"name" AttVal:@"emailNotify"];
+    
+    
+        [secondElement addChild:objElement];
+    
+    return secondElement;
+}
+
+
++(RICHINFOGDataXMLElement *) AddElementValAndAttri:(RICHINFOGDataXMLElement *)element name:(NSString *)name val:(NSString *)value attriName:(NSString *)attName AttVal:(NSString *)attVal
+{
+    if([RFUtility NSStringIsNULL:name]) return nil;
+    
+    RESETBUFFER(value);
+    RESETBUFFER(attVal);
+    
+    RICHINFOGDataXMLElement * intElement=[RICHINFOGDataXMLNode elementWithName:name stringValue:value];
+    if(![RFUtility NSStringIsNULL:attName])
+        [RICHINFOXmlCtrl AddElementAttri:intElement name:attName val:attVal];
+    [element addChild:intElement];
+    return element;
+}
+
++(RICHINFOGDataXMLElement *) AddElementVal:(RICHINFOGDataXMLElement *)element name:(NSString *)name val:(NSString *)value
+{
+    RICHINFOGDataXMLElement * nameElement = [RICHINFOGDataXMLNode elementWithName:name stringValue:name];
+    
+    [element addChild:nameElement];
+    return element;
+}
+
++(RICHINFOGDataXMLElement *) AddElementAttri:(RICHINFOGDataXMLElement *)element name:(NSString *)name val:(NSString *)value
+{
+    id attriElement = [RICHINFOGDataXMLNode attributeWithName:name stringValue:value];
+    
+    [element addChild:attriElement];
+    return element;
+}
+
+
+#pragma mark -
++(NSString *)GetLogin139MailXmlString:(NSString *)name pwd:(NSString *)pwd
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"request"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"cmd" val:@"login" attriName:nil AttVal:nil];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"clientType" val:@"login" attriName:nil AttVal:nil];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"userName" val:name attriName:nil AttVal:nil];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"password" val:pwd attriName:nil AttVal:nil];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
++(NSDictionary *) ParseLogin139MailXmlFromData:(NSData *)xmlData
+{
+    NSMutableDictionary * dict=[NSMutableDictionary dictionary];
+    NSError *error;
+    RICHINFOGDataXMLDocument *doc = [[RICHINFOGDataXMLDocument alloc] initWithData:xmlData options:0 error:&error];
+    if (doc == nil) { return nil; }
+    
+    NSArray *partyMembers = [doc nodesForXPath:@"return" error:&error];
+    for (RICHINFOGDataXMLElement *partyMember in partyMembers) {
+        // result
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"result"];
+        
+        // description
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"description"];
+        
+        // description
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"ssoid"];
+        
+        // description
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"svrInfoURL"];
+        
+        // description
+        [RICHINFOXmlCtrl GetElementNameAndValToDictionary:dict :partyMember key:@"logoutURL"];
+    }
+    [doc release];
+    
+    return dict;
+}
+
++(NSDictionary *) ParseLogin139MailXml:(NSString *)xmlPath
+{
+    if([RFUtility NSStringIsNULL:xmlPath]) return nil;
+    
+    NSData *xmlData = [[[NSMutableData alloc] initWithContentsOfFile:xmlPath] autorelease];
+	xmlData = [xmlPath dataUsingEncoding:NSASCIIStringEncoding];
+    return [RICHINFOXmlCtrl ParseLogin139MailXmlFromData:xmlData];
+}
+
++(void) GetElementNameAndValToDictionary:(NSMutableDictionary *)dict :(RICHINFOGDataXMLElement *)element key:(NSString *)key
+{
+    NSArray *names = [element elementsForName:key];
+    if (names.count > 0) {
+        NSString * tempText=nil;
+
+        RICHINFOGDataXMLElement *firstName = (RICHINFOGDataXMLElement *) [names objectAtIndex:0];
+        tempText = firstName.stringValue;
+        RESETBUFFER(tempText);
+        [dict setObject:tempText forKey:key];
+    }
+}
+
+#pragma mark消息盒子
+//获得消息盒子个数的XML
++(NSString *) GetMsgCountXmlString
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+//获得消息盒子列表。
++(NSString *) GetMsgListXmlString:(NSString *)page size:(NSString *)size
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:page attriName:@"name" AttVal:@"pageIndex"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:size attriName:@"name" AttVal:@"pageSize"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"0" attriName:@"name" AttVal:@"type"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+//获得消息盒子  消息详情
++(NSString *) GetMsgDeatilXmlString:(NSString *)msgId
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:msgId attriName:@"name" AttVal:@"messageId"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+
+// 删除 消息详情
++(NSString *) GetMsgDeleteXmlString:(NSString *)msgId
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3"  attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:msgId attriName:@"name" AttVal:@"seqno"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
++(NSString *) GetUserAddrJsonDataXmlString
+{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"GetUserAddrJsonData"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    return tempText;
+}
++(NSString *) GetMsgBlackWhiteXmlString:(CMessageBoxInfo *)msgInfo type:(NSString *)type{
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3" attriName:@"name" AttVal:@"comeFrom"];
+	
+	if ([msgInfo.type isEqualToString:@"1"]) {
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:msgInfo.actiUin attriName:@"name" AttVal:@"uin"];
+	}
+	else if ([msgInfo.type isEqualToString:@"2"]){
+		[RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:msgInfo.labelUin attriName:@"name" AttVal:@"uin"];
+	}
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:type attriName:@"name" AttVal:@"type"];
+
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
++(NSString *) GetMsgBlackWhiteXmlString:(NSString *)uin {
+    RICHINFOGDataXMLElement * partyElement = [RICHINFOGDataXMLNode elementWithName:@"object"];
+    
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"int" val:@"3" attriName:@"name" AttVal:@"comeFrom"];
+    [RICHINFOXmlCtrl AddElementValAndAttri:partyElement name:@"string" val:uin attriName:@"name" AttVal:@"uin"];
+    
+    RICHINFOGDataXMLDocument *document = [[[RICHINFOGDataXMLDocument alloc] initWithRootElement:partyElement] autorelease];
+    [document setCharacterEncoding:@"utf8"];
+    NSData *xmlData = document.XMLData;
+    
+    NSString * tempText=[NSString stringWithUTF8String:[xmlData bytes]];
+    NSLog(@"%@", tempText);
+    return tempText;
+}
+
+@end

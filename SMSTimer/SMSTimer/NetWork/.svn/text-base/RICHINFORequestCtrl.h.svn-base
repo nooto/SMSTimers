@@ -1,0 +1,275 @@
+//
+//  C139ActivityCtrl.h
+//  Fragment
+//
+//  Created by zhang on 13-5-13.
+//
+//
+
+//139活动处理类
+
+#import <Foundation/Foundation.h>
+#import "RICHINFOActivityInfo.h"
+#import "RICHINFO_UserInfo.h"
+#import "RFContact.h"
+
+@protocol C139ActivityDelegate <NSObject>
+//新增活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//nid  新的ID
+//sender 回调者
+-(void) NoticeAdd139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti newid:(NSString *)nid sender:(id)sender;
+
+//更新活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeUpdate139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender;
+
+//取消活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeCancel139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender;
+
+//删除活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeDelete139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender;
+
+//获取活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//resultDict 里面存放的是取回的结果数组，数组里面的对象为ActivityInfo，运行后将释放内存，请自行保存
+//sender 回调者
+-(void) NoticeQuery139ActivityFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender;
+
+//获取时间同步活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//resultDict 里面存放的是取回的结果数组，数组里面的对象为ActivityInfo，运行后将释放内存，请自行保存
+//sender 回调者
+-(void) NoticeSync139ActivityFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender;
+
+
+-(void) Notice139ActivityViewFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender;
+
+//接受或拒绝活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeYqReject139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti  sender:(id)sender;
+
+//邀请活动通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeYq139ActivityFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict  sender:(id)sender;
+
+//获取活动详细信息通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeGetInfo139ActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender;
+
+
+-(void) NoticeSetRemindActivityFinish:(int)state desc:(NSString *)desc acti:(RICHINFOActivityInfo *)acti sender:(id)sender;
+
+
+//获取日历标签信息通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeQueryCalendarLabelFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict sender:(id)sender;
+
+
+
+//获取日历标签信息通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeAddCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender;
+
+//获取日历标签信息通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeModifyCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender;
+
+//获取日历标签信息通知
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeDeleteCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender;
+
+
+//取消订阅。
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeCancelSubscribeLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender;
+
+//删除共享
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeCancelLabelShareFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender;
+
+//根据主键查询共享标签。
+-(void) NoticeDetailCalendarLabelFinish:(int)state desc:(NSString *)desc acti:(CLabelInfo *)labelInfo sender:(id)sender;
+
+//处理日历标签 共享处理
+//state RESULT_OK表示成功 RESULT_FAIL表示失败
+//desc 输出描述性信息
+//acti 活动对象
+//sender 回调者
+-(void) NoticeProcessShareLabelFinish:(int)state desc:(NSString *)desc acti:(NSString *)labelId sender:(id)sender;
+
+/**
+ *  @param state
+ *  @param desc
+ *  @param labelId
+ *  @param sender
+ */
+-(void) NoticeQueryFreeSmsCountFinish:(int)state desc:(NSString *)freeinfo sendCount:(NSString *)sendCount sender:(id)sender;
+
+
+
+//获取消息盒子信息通知。
+-(void) NoticeQueryMsgCountFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)labelInfo sender:(id)sender;
+-(void) NoticeQueryMsgListFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict  sender:(id)sender;
+-(void) NoticeQueryMsgDetailFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)activityInfo sender:(id)sender;
+-(void) NoticeDeletMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)labelInfo sender:(id)sender;
+-(void) NoticeYqORejectMsgFinish:(int)state desc:(NSString *)desc acti:(CMessageBoxInfo *)labelInfo sender:(id)sender;
+
+
+//黑白名单通知
+-(void) NoticeAddBlackWhiteItemMsgFinish:(int)state desc:(NSString*)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender;
+-(void) NoticeDelBlackWhiteItemMsgFinish:(int)state desc:(NSString*)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender;
+-(void) NoticeGetBlackWhiteItemMsgFinish:(int)state desc:(NSString*)desc acti:(CMessageBoxInfo *)msgInfo sender:(id)sender;
+
+//联系人
+-(void) NoticeQueryContactorListFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict  sender:(id)sender;
+
+
+//
+-(void) NoticeLoginFinish:(int)state desc:(NSString *)desc result:(NSArray *)resultDict  sender:(id)sender;
+@end
+
+
+@interface C139ActivityCtrl : NSObject
+{
+    id<C139ActivityDelegate> m_delegate;
+
+    int m_page;
+    int m_number;
+    NSString * m_actionType;
+	
+    NSString * m_startTime, * m_endTime;
+}
+
+@property(nonatomic, retain) NSString * m_serverTime;
+
++(void)resetDate:(NSDate*)newDate;
++(void)resetSid:(NSString*)newSid;
+
++(C139ActivityCtrl *) GetC139ActivityCtrl;  //生成一个新的对象
++(void) Remove139ActivityCtrl:(C139ActivityCtrl *)obj;  //移除一个生成的对象
+
++(void) CleanSaveData;
+
+-(void) StopRequire;
+
+-(BOOL) Add139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate;
+-(BOOL) Update139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate;
+-(BOOL) Cancel139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate;
+-(BOOL) Delete139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate;
+//发送同步联系人命令
+-(void) ContactSynToCloud:(NSMutableDictionary *)paramsDic;
+
+
+-(BOOL)LoginCalendarWithAccount:(NSString*)account andPassword:(NSString*)pswd  delegate:(id)delegate;
+
+//查询139活动
+//actionType=history:表示查询已办活动
+//actionType=todo:表示查询待办活动
+//actionType=seven:表示查询近7天活动列表
+//actionType=all:表示用户所有的活动
+-(BOOL) Query139Activity:(int)page size:(int)number type:(NSString *)actionType delegate:(id)delegate;
+
+//接受或拒绝活动
+//actionType	是	Int	0：接受操作  1：拒绝操作 2:删除
+//actiId	是	活动对象ID
+//desc	否	String	如果是拒绝的操作，填写拒绝的原因
+-(BOOL) YqOrReject139Activity:(NSString *)desc actiId:(NSString *)acId type:(NSString *)actionType delegate:(id)delegate;
+
+//按起始时间获取数据
+//sTime 开始时间
+//eTime 结束时间
+-(BOOL) Sync139Activity:(NSDate *)sTime end:(NSDate *)eTime delegate:(id)delegate;
+
+-(BOOL) Query139ActivityViewFrom:(NSString*)startDate ToDate:(NSString*)endDate  type:(NSString*)actiontype delegate:(id)delegate;
+
+//获得当前用户活动邀请消息
+//delegate接口回调对象
+-(BOOL) GetYq139Activity:(int)page size:(int)number delegate:(id)delegate;
+
+//获得活动详细信息
+//delegate接口回调对象
+-(BOOL) GetInfo139Activity:(RICHINFOActivityInfo *)acInfo delegate:(id)delegate;
+-(BOOL) setCalendarRemin:(RICHINFOActivityInfo *)actiInfo delegate:(id)delegate;
+
+
+/**
+ *  查询免费短信条数
+ */
+-(BOOL) queryFreeSMSCountDeleagte:(id)delegate;
+
+//获得日历标签
+//delegate接口回调对象
+-(BOOL) QueryCalendarLabel:(NSString*)acInfo delegate:(id)delegate;
+-(BOOL) AddCalendarLabel:(CLabelInfo*)labelInfo delegate:(id)delegate;
+-(BOOL) ModifyCalendarLabel:(CLabelInfo*)labelInfo delegate:(id)delegate;
+-(BOOL) DeleteCalendarLabel:(CLabelInfo*)labelInfo delegate:(id)delegate;
+-(BOOL) GetCalendarLabelDetail:(CLabelInfo*)labelInfo delegate:(id)delegate;
+-(BOOL) CancelSubscribeLabel:(CLabelInfo *)labelInfo delegate:(id)delegate;
+-(BOOL) CancelLabelShare:(CLabelInfo *)labelInfo delegate:(id)delegate;
+
+
+//处理分享的标签信息。actionype：0:接受   1：拒
+-(BOOL) ProcessShareCalendarLabel:(NSString*)labelId type:(NSString*)actionType delegate:(id)delegate;
+
+//消息盒子功能
+-(BOOL) QueryMessageCount:(id)delegate;
+-(BOOL) QueryMessageList:(int)page size:(int)number delegate:(id)delegate;
+-(BOOL) QueryMessageDetail:(CMessageBoxInfo*)info delegate:(id)delegate;
+-(BOOL) DeleteMessage:(NSString*)msgId delegate:(id)delegate;
+-(BOOL) YqOrRejectMessage:(CMessageBoxInfo*)msgId  type:(NSString*)actionType delegate:(id)delegate;
+
+//黑白名单功能。
+-(BOOL)AddBlackWhiteItem:(CMessageBoxInfo*)msgInfo type:(NSString *)type delegate:(id)delegate;// type:1 白名单 2 黑名单
+
+-(BOOL)DelBlackWhiteItem:(NSString*)uin delegate:(id)delegate;
+-(BOOL)GetBlackWhiteItem:(CMessageBoxInfo*)info delegate:(id)delegate;
+
+
+//联系人功能；
+- (BOOL)QueryContacotorsAddresList:(id)delegate;
+
+
+@end

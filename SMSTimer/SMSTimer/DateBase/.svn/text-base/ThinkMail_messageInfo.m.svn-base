@@ -1,0 +1,120 @@
+//
+//  ThinkMail_messageInfo.m
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-21.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import "ThinkMail_messageInfo.h"
+
+@implementation ThinkMail_CDBConfig (ThinkMail_messageinfo)
+
+-(void)insertMessageinfo:(TKResponsedModel_MessageInfo*)message ToAccount:(NSString*)account{
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:m_db];
+	[m_db open];
+	NSDictionary *msgDict = [NSMutableDictionary CreateMessageinfoDictionary:message];
+	
+	NSMutableDictionary *conditiondict = [[NSMutableDictionary alloc] init];
+	[conditiondict setValue:message.mid forKey:@"omid"];
+	
+	if ([self QueryMessageInfoIsExistById:message.mid :m_db]) {
+		[self UpdateByTableName:msgDict
+					  condition:conditiondict
+					  tableName:Table_messageInfo:m_db];
+	}
+	else{
+		[self InsertIntoTableByName:msgDict tableName:Table_messageInfo:m_db];
+	}
+	
+	[m_db close];
+}
+
+-(BOOL)QueryMessageInfoIsExistById:(NSString*)mid :(ThinkMail_Database*)m_db{
+		NSString *sql = [NSString stringWithFormat:@"select * from %@ where omid=?",Table_messageInfo];
+		ThinkMail_ResultSet * rs=[m_db executeQuery:sql,mid];
+		if([rs next])
+		{
+			[rs close];
+			return YES;
+		}
+		[rs close];
+		return NO;
+}
+
+-(TKResponsedModel_MessageInfo*)messageInfoFromResultset:(ThinkMail_ResultSet*)rs{
+	
+	TKResponsedModel_MessageInfo *item = [[TKResponsedModel_MessageInfo alloc] init];
+	item.mid = [rs stringForColumn:@"omid"];
+	item.account = [rs stringForColumn:@"account"];
+	item.to = [rs stringForColumn:@"toMail"];
+	item.cc = [rs stringForColumn:@"cc"];
+	item.requestReadReceipt = [rs intForColumn:@"requestReadReceipt"];
+
+	item.subject = [rs stringForColumn:@"subject"];
+	item.sendDate = [rs stringForColumn:@"sendDate"];
+	item.priority = [rs intForColumn:@"priority"];
+	item.isHtml = [rs intForColumn:@"isHtml"];
+	item.denyForward = [rs intForColumn:@"denyForward"];
+	item.html.content = [rs stringForColumn:@"htmlContent"];
+	
+	item.sendWay = [rs intForColumn:@"sendWay"];
+	item.headerRaw = [rs stringForColumn:@"headerRaw"];
+	item.sessionMails = [rs stringForColumn:@"sessionMails"];
+	
+	return item;
+}
+
+-(TKResponsedModel_MessageInfo*)qureyMailMessageInfoWithMid:(NSString*)mid Account:(NSString*)account{
+	if(account == nil) return nil;
+		ThinkMail_Database* m_db = [self getDbWithAccount:account];
+		[m_db open];
+		NSString *sql = [NSString stringWithFormat:@"select * from %@ where omid=?",Table_messageInfo];
+		ThinkMail_ResultSet * rs=[m_db executeQuery:sql,mid];
+		if([rs next])
+		{
+			TKResponsedModel_MessageInfo *item = [self messageInfoFromResultset:rs];
+			[rs close];
+			[m_db close];
+			return item;
+		}
+		[rs close];
+		[m_db close];
+		return nil;
+}
+
+-(NSMutableArray*)qureyMailMessageInfoWithCondition:(NSDictionary*)dic Account:(NSString*)account{
+	if( account == nil) return nil;
+	
+	NSArray*allkey = [dic allKeys];
+	NSString*tempSQl = @"";
+	for (NSInteger i = 0; i < [allkey count]; i++) {
+		tempSQl = [tempSQl stringByAppendingString:[allkey objectAtIndex:i]];
+		tempSQl = [tempSQl stringByAppendingString:@"="];
+		tempSQl = [tempSQl stringByAppendingString:[dic objectForKey:[allkey objectAtIndex:i]]];
+		if(i != [allkey count]-1)
+		{
+			tempSQl = [tempSQl stringByAppendingString:@" and "];
+		}
+		NSLog(@"%@", tempSQl);
+	}
+	
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[m_db open];
+	
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where %@ order by receiveDate desc",Table_messageInfo,tempSQl];
+	ThinkMail_ResultSet * rs=[m_db executeQuery:sql];
+	NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+	
+	while([rs next])
+	{
+		TKResponsedModel_MessageInfo *item = [self messageInfoFromResultset:rs];
+		[arrMessage addObject:item];
+	}
+	
+	[rs close];
+	[m_db close];
+	return arrMessage;
+}
+@end

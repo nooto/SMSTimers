@@ -1,0 +1,223 @@
+//
+//  ThinkMail_CDBConfig+ThinkMail__ydsw_activity.m
+//
+//
+//  Created by 肖 高超 on 12-6-11.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+#import "ThinkMail_message.h"
+#import "ThinkMailDictionary.h"
+#import "ThinkMail_ResultSet.h"
+#import "ThinkMail_DataModel.h"
+@implementation ThinkMail_CDBConfig (ThinkMail__message)
+
+
+#pragma mark - 创建表过程。
+-(void)insertMessage:(TKResponseModel_MessageData*)message ToAccount:(NSString*)account{
+	ThinkMail_Database *_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:_db];
+	[_db open];
+	NSDictionary *msgDict = [NSMutableDictionary CreateMessageDataDictionary:message];
+	
+	NSMutableDictionary *conditiondict = [[NSMutableDictionary alloc] init];
+	[conditiondict setValue:message.mid forKey:@"mid"];
+	
+	if ([self QueryMessageIsExistById:message.mid :_db]) {
+		[self UpdateByTableName:msgDict
+					  condition:conditiondict
+					  tableName:Table_message
+							   :_db];
+	}
+	else{
+		[self InsertIntoTableByName:msgDict tableName:Table_message:_db];
+	}
+	[_db close];
+}
+
+-(BOOL)QueryMessageIsExistById:(NSString*)mid :(ThinkMail_Database*)db{
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where mid=?",Table_message];
+	ThinkMail_ResultSet * rs=[db executeQuery:sql,mid];
+	if([rs next])
+	{
+		[rs close];
+		return YES;
+	}
+	[rs close];
+	return NO;
+}
+
+-(BOOL)updateMailMessageReadWithMid:(NSString*)mid  read:(NSString*)read Account:(NSString*)account{
+	ThinkMail_Database *_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:_db];
+	[_db open];
+	
+	NSMutableDictionary *msgDict = [NSMutableDictionary dictionary];
+	[msgDict setObject:read forKey:@"read"];
+	//条件
+	NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+	[dicCondition setObject:mid forKey:@"mid"];
+	
+	[self UpdateByTableName:msgDict condition:dicCondition tableName:Table_message :_db];
+	[_db close];
+	return YES;
+}
+
+-(BOOL)updateMailMessageStarFlagWithMid:(NSString*)mid  starFlag:(NSString*)starFlag Account:(NSString*)account{
+	ThinkMail_Database *_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:_db];
+	[_db open];
+	
+	NSMutableDictionary *msgDict = [NSMutableDictionary dictionary];
+	[msgDict setObject:starFlag forKey:@"starFlag"];
+	//条件
+	NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+	[dicCondition setObject:mid forKey:@"mid"];
+	
+	[self UpdateByTableName:msgDict condition:dicCondition tableName:Table_message :_db];
+	[_db close];
+	return YES;
+}
+
+-(BOOL)updateMailMessageFid:(NSInteger)fid AtMid:(NSString*)mid  Account:(NSString*)account{
+	ThinkMail_Database *_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:_db];
+	[_db open];
+	//
+	NSMutableDictionary *msgDict = [NSMutableDictionary dictionary];
+	[msgDict setObject:[NSString stringWithFormat:@"%d", fid] forKey:@"fid"];
+	
+	//条件
+	NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+	[dicCondition setObject:mid forKey:@"mid"];
+	
+	[self UpdateByTableName:msgDict condition:dicCondition tableName:Table_message :_db];
+	[_db close];
+	return YES;
+}
+
+
+-(TKResponseModel_MessageData*)messageDataFromResultset:(ThinkMail_ResultSet*)rs{
+	
+	TKResponseModel_MessageData *item = [[TKResponseModel_MessageData alloc] init];
+
+	item.mid = [rs stringForColumn:@"mid"];
+	item.fid = [rs intForColumn:@"fid"];
+	item.mailSession = [rs intForColumn:@"mailSession"];
+	item.size = [rs intForColumn:@"size"];
+	item.sendDate = [rs intForColumn:@"sendDate"];
+
+	item.modifyDate = [rs intForColumn:@"modifyDate"];
+	item.taskDate = [rs intForColumn:@"taskDate"];
+	item.priority = [rs intForColumn:@"priority"];
+	item.color = [rs intForColumn:@"color"];
+	item.antivirusStatus = [rs intForColumn:@"antivirusStatus"];
+	
+	item.rcptFlag = [rs intForColumn:@"rcptFlag"];
+	item.attachmentNum = [rs intForColumn:@"attachmentNum"];
+	item.mailNum = [rs intForColumn:@"mailNum"];
+	item.meetingFlag = [rs intForColumn:@"meetingFlag"];
+	item.receiveDate = [rs intForColumn:@"receiveDate"];
+
+	item.flagObject.read = [rs intForColumn:@"read"];
+	item.flagObject.starFlag = [rs intForColumn:@"starFlag"];
+	
+	item.mailFlag = [rs intForColumn:@"mailFlag"];
+	item.starType = [rs intForColumn:@"starType"];
+	item.logoType = [rs intForColumn:@"logoType"];
+	item.billType = [rs intForColumn:@"billType"];
+//	item.flagObject = [rs intForColumn:@"flagObject"];
+	
+//	item.label = [rs stringForColumn:@"label"];
+	item.from = [rs stringForColumn:@"fromMail"];
+	item.to = [rs stringForColumn:@"toMail"];
+	item.subject = [rs stringForColumn:@"subject"];
+	item.summary = [rs stringForColumn:@"summary"];
+	
+	item.denyForward = [rs intForColumn:@"denyForward"];
+	item.securityLevel = [rs intForColumn:@"securityLevel"];
+	item.billFlag = [rs intForColumn:@"billFlag"];
+	item.auditStatus = [rs intForColumn:@"auditStatus"];
+	return item;
+}
+
+-(NSMutableArray*)qureyMailMessageWithFid:(NSString*)fid Account:(NSString*)account{
+
+	if(fid == nil|| account == nil) return nil;
+	ThinkMail_Database*	m_db = [self getDbWithAccount:account];
+	[m_db open];
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where fid=? order by sendDate desc",Table_message];
+	ThinkMail_ResultSet * rs=[m_db executeQuery:sql,fid];
+	NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+	while([rs next])
+	{
+		TKResponseModel_MessageData *item = [self messageDataFromResultset:rs];
+		[arrMessage addObject:item];
+	}
+	[rs close];
+	[m_db close];
+
+	return arrMessage;
+}
+
+-(NSMutableArray*)qureyMailMessageWithFid:(NSString*)fid limit:(NSInteger)limit offset:(NSInteger)offset Account:(NSString*)account {
+	if(fid == nil|| account == nil) return nil;
+	if (limit <= 0) {
+		limit = 20;
+	}
+	if (offset <= 0) {
+		offset = 0;
+	}
+	
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[m_db open];
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where fid=? order by receiveDate desc  LIMIT  %d  OFFSET %d",Table_message, limit, offset];
+	ThinkMail_ResultSet * rs=[m_db executeQuery:sql,fid];
+	NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+	
+	while([rs next])
+	{
+		TKResponseModel_MessageData *item = [self messageDataFromResultset:rs];
+		[arrMessage addObject:item];
+	}
+	
+	[rs close];
+	[m_db close];
+	return arrMessage;
+}
+
+-(NSMutableArray*)qureyMailMessageWithCondition:(NSDictionary*)dic Account:(NSString*)account{
+	if( account == nil) return nil;
+	
+	NSArray*allkey = [dic allKeys];
+	NSString*tempSQl = @"";
+	for (NSInteger i = 0; i < [allkey count]; i++) {
+		tempSQl = [tempSQl stringByAppendingString:[allkey objectAtIndex:i]];
+		tempSQl = [tempSQl stringByAppendingString:@"="];
+		tempSQl = [tempSQl stringByAppendingString:[dic objectForKey:[allkey objectAtIndex:i]]];
+		if(i != [allkey count]-1)
+		{
+			tempSQl = [tempSQl stringByAppendingString:@" and "];
+		}
+		NSLog(@"%@", tempSQl);
+	}
+	
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[m_db open];
+	
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where %@ order by receiveDate desc",Table_message,tempSQl];
+	ThinkMail_ResultSet * rs=[m_db executeQuery:sql];
+	NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+	
+	while([rs next])
+	{
+		TKResponseModel_MessageData *item = [self messageDataFromResultset:rs];
+		[arrMessage addObject:item];
+	}
+	
+	[rs close];
+	[m_db close];
+	return arrMessage;
+}
+
+
+@end

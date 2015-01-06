@@ -1,0 +1,29 @@
+//
+//  ThinkMail_CDBConfig+ThinkMail__ydsw_activity.h
+//
+//
+//  Created by 肖 高超 on 12-6-11.
+//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//
+
+#import "ThinkMail_DBConfig.h"
+#import "../ThinkMail_DataModel.h"
+
+@interface ThinkMail_CDBConfig (ThinkMail_message)
+
+
+-(void)insertMessage:(TKResponseModel_MessageData*)message ToAccount:(NSString*)account;
+
+//查询  帐号下 对应文件夹的 所有邮件。
+-(NSMutableArray*)qureyMailMessageWithFid:(NSString*)fid Account:(NSString*)account;
+
+-(BOOL)updateMailMessageReadWithMid:(NSString*)mid  read:(NSString*)read Account:(NSString*)account;
+-(BOOL)updateMailMessageStarFlagWithMid:(NSString*)mid  starFlag:(NSString*)starFlag Account:(NSString*)account;
+-(BOOL)updateMailMessageFid:(NSInteger)fid AtMid:(NSString*)mid  Account:(NSString*)account;
+
+-(NSMutableArray*)qureyMailMessageWithFid:(NSString*)fid limit:(NSInteger)limit offset:(NSInteger)offset Account:(NSString*)account;
+-(NSMutableArray*)qureyMailMessageWithCondition:(NSDictionary*)dic Account:(NSString*)account;
+
+@end
+
+

@@ -1,0 +1,161 @@
+//
+//  ThinkMail_Folder.m
+//  ThinkMail_iOS_SDK
+//
+//  Created by GaoAng on 14-4-15.
+//  Copyright (c) 2014年 Richinfo. All rights reserved.
+//
+
+#import "ThinkMail_Folder.h"
+#import "ThinkMail_ResultSet.h"
+@implementation ThinkMail_CDBConfig (ThinkMail_folder)
+
+-(void)insertFolder:(TKResponseDModel_FolderData*)folder ToAccount:(NSString*)account{
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:m_db];
+	[m_db open];
+	
+	NSDictionary *msgDict = [NSMutableDictionary CreateFolderDictionaryData:folder];
+		
+	NSMutableDictionary *conditiondict = [[NSMutableDictionary alloc] init];
+	[conditiondict setValue:[NSString stringWithFormat:@"%ld", (long)folder.fid] forKey:@"fid"];
+
+	if ([self QueryFolderIsExistById:folder.fid :m_db]) {
+		[self UpdateByTableName:msgDict condition:conditiondict tableName:Table_folder:m_db];
+	}
+	else{
+		[self InsertIntoTableByName:msgDict tableName:Table_folder:m_db];
+	}
+	
+	[m_db close];
+}
+
+
+-(BOOL)QueryFolderIsExistById:(NSInteger)fid :(ThinkMail_Database*)m_db{
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where fid=?",Table_folder];
+    ThinkMail_ResultSet * rs=[m_db executeQuery:sql,[NSString stringWithFormat:@"%ld",(long)fid]];
+    if([rs next])
+    {
+        [rs close];
+        return YES;
+    }
+    
+    [rs close];
+	return NO;
+}
+
+-(TKResponseDModel_FolderData*)folderInfoFromResultset:(ThinkMail_ResultSet*)rs{
+	TKResponseDModel_FolderData *item = [[TKResponseDModel_FolderData alloc] init];
+	
+	item.name = [rs stringForColumn:@"name"];
+	item.fid = [rs intForColumn:@"fid"];
+	item.folderColor = [rs intForColumn:@"folderColor"];
+	item.folderPassFlag = [rs intForColumn:@"folderPassFlag"];
+	item.hideFlag = [rs intForColumn:@"hideFlag"];
+	
+	item.keepPeriod = [rs intForColumn:@"keepPeriod"];
+	item.location = [rs intForColumn:@"location"];
+	item.parentId = [rs intForColumn:@"parentId"];
+	item.pop3Flag = [rs intForColumn:@"pop3Flag"];
+	item.pop3Flag = [rs intForColumn:@"pop3Flag"];
+	
+	item.type = [rs intForColumn:@"type"];
+	item.vipFlag = [rs intForColumn:@"vipFlag"];
+	item.messageCount = [rs intForColumn:@"messageCount"];
+	item.messageSize = [rs intForColumn:@"messageSize"];
+	item.unreadMessageCount = [rs intForColumn:@"unreadMessageCount"];
+	
+	item.unreadMessageSize = [rs intForColumn:@"unreadMessageSize"];
+	return item;
+}
+
+
+-(BOOL)updateFolderUnreadMessageCountWithFid:(NSInteger)fid  unreadMessageCount:(NSInteger)count Account:(NSString*)account{
+	ThinkMail_Database *_db = [self getDbWithAccount:account];
+	[self MakeAccountDBIsExistAndOpen:_db];
+	[_db open];
+	
+	NSMutableDictionary *msgDict = [NSMutableDictionary dictionary];
+	[msgDict setObject:[NSString stringWithFormat:@"%d", count] forKey:@"unreadMessageCount"];
+	//条件
+	NSMutableDictionary *dicCondition=[NSMutableDictionary dictionary];
+	[dicCondition setObject:[NSString stringWithFormat:@"%d", fid] forKey:@"fid"];
+	
+	[self UpdateByTableName:msgDict condition:dicCondition tableName:Table_folder :_db];
+	[_db close];
+	return YES;
+	
+}
+
+
+-(NSMutableArray*)qureyFolderWithAccount:(NSString*)account{
+	if( account == nil) return nil;
+		ThinkMail_Database* m_db = [self getDbWithAccount:account];
+		[m_db open];
+		NSString *sql = [NSString stringWithFormat:@"select * from %@ ",Table_folder];
+		ThinkMail_ResultSet * rs=[m_db executeQuery:sql];
+		NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+		while([rs next])
+		{
+			TKResponseDModel_FolderData *item = [self folderInfoFromResultset:rs];
+			[arrMessage addObject:item];
+		}
+		[rs close];
+		[m_db close];
+		return arrMessage;
+}
+
+-(NSMutableArray*)qureyFolderWithCondition:(NSDictionary*)dic Account:(NSString*)account{
+	if( account == nil) return nil;
+	
+	NSArray*allkey = [dic allKeys];
+	NSString*tempSQl = @"";
+	for (NSInteger i = 0; i < [allkey count]; i++) {
+		tempSQl = [tempSQl stringByAppendingString:[allkey objectAtIndex:i]];
+		tempSQl = [tempSQl stringByAppendingString:@"="];
+		tempSQl = [tempSQl stringByAppendingString:[dic objectForKey:[allkey objectAtIndex:i]]];
+		if(i != [allkey count]-1)
+		{
+			tempSQl = [tempSQl stringByAppendingString:@" and "];
+		}
+		NSLog(@"%@", tempSQl);
+	}
+	
+	ThinkMail_Database* m_db = [self getDbWithAccount:account];
+	[m_db open];
+	
+	NSString *sql = [NSString stringWithFormat:@"select * from %@ where %@ order by receiveDate desc",Table_folder,tempSQl];
+	ThinkMail_ResultSet * rs=[m_db executeQuery:sql];
+	NSMutableArray *arrMessage = [[NSMutableArray alloc] initWithCapacity:1];
+	
+	while([rs next])
+	{
+		TKResponseDModel_FolderData *item = [self folderInfoFromResultset:rs];
+		[arrMessage addObject:item];
+	}
+	
+	[rs close];
+	[m_db close];
+	return arrMessage;
+}
+
+
+
+-(BOOL)deleteFolderWithFid:(NSInteger )fid Account:(NSString *)account{
+	if ( account == nil || account.length <= 0 ) {
+		return NO;
+	}
+		ThinkMail_Database* m_db = [self getDbWithAccount:account];
+		NSString *sql = [NSString stringWithFormat:@"delete  from %@ where fid=%d", Table_folder, fid];
+		[m_db open];
+		[m_db executeQuery:sql];
+		
+		if ([m_db hadError]) {
+			[m_db close];
+			return NO;
+		}
+		[m_db close];
+		return YES;
+}
+
+@end
