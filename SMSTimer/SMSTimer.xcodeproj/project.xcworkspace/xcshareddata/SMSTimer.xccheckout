@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>85B388EA-2831-4DA4-8614-B853F6C78F43</string>
+	<key>IDESourceControlProjectName</key>
+	<string>SMSTimer</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>56F249B7DB0C2BF26ADFC69C936CBD544297FF09</key>
+		<string>github.com:nooto/SMSTimers.git</string>
+		<key>CA68475843904944ECC85FD6E1F11133F1BCFBB7</key>
+		<string>github.com:nooto/SMSTimers.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>SMSTimer/SMSTimer.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>56F249B7DB0C2BF26ADFC69C936CBD544297FF09</key>
+		<string>../../../..</string>
+		<key>CA68475843904944ECC85FD6E1F11133F1BCFBB7</key>
+		<string>../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>github.com:nooto/SMSTimers.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>CA68475843904944ECC85FD6E1F11133F1BCFBB7</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>56F249B7DB0C2BF26ADFC69C936CBD544297FF09</string>
+			<key>IDESourceControlWCCName</key>
+			<string></string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>CA68475843904944ECC85FD6E1F11133F1BCFBB7</string>
+			<key>IDESourceControlWCCName</key>
+			<string>SMSTimers</string>
+		</dict>
+	</array>
+</dict>
+</plist>
