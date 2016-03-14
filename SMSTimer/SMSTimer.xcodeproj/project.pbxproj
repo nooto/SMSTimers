@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 47;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -57,7 +57,6 @@
 		3E575B371A52732100B64399 /* ic_logo.png in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B361A52732100B64399 /* ic_logo.png */; };
 		3E575B3C1A52744400B64399 /* 60.png in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B391A52744400B64399 /* 60.png */; };
 		3E575B3D1A52744400B64399 /* 29.png in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B3A1A52744400B64399 /* 29.png */; };
-		3E575B3F1A52751000B64399 /* Images-2.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B3E1A52751000B64399 /* Images-2.xcassets */; };
 		3E575B461A52769B00B64399 /* 60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B401A52769B00B64399 /* 60@2x.png */; };
 		3E575B471A52769B00B64399 /* 60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B411A52769B00B64399 /* 60@3x.png */; };
 		3E575B481A52769B00B64399 /* 40@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 3E575B421A52769B00B64399 /* 40@2x.png */; };
@@ -182,7 +181,6 @@
 		3E575B361A52732100B64399 /* ic_logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ic_logo.png; sourceTree = "<group>"; };
 		3E575B391A52744400B64399 /* 60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = 60.png; sourceTree = "<group>"; };
 		3E575B3A1A52744400B64399 /* 29.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = 29.png; sourceTree = "<group>"; };
-		3E575B3E1A52751000B64399 /* Images-2.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Images-2.xcassets"; sourceTree = "<group>"; };
 		3E575B401A52769B00B64399 /* 60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "60@2x.png"; sourceTree = "<group>"; };
 		3E575B411A52769B00B64399 /* 60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "60@3x.png"; sourceTree = "<group>"; };
 		3E575B421A52769B00B64399 /* 40@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "40@2x.png"; sourceTree = "<group>"; };
@@ -332,6 +330,8 @@
 				3E44C12418E950EE00FC53BF /* Products */,
 			);
 			sourceTree = "<group>";
+			usesTabs = 0;
+			wrapsLines = 1;
 		};
 		3E44C12418E950EE00FC53BF /* Products */ = {
 			isa = PBXGroup;
@@ -383,7 +383,6 @@
 				3E44C18618E9C09B00FC53BF /* CMainViewController.m */,
 				3E44C18718E9C09B00FC53BF /* CMainViewController.xib */,
 				3E44C13818E950EE00FC53BF /* Images.xcassets */,
-				3E575B3E1A52751000B64399 /* Images-2.xcassets */,
 				3E44C12D18E950EE00FC53BF /* Supporting Files */,
 			);
 			path = SMSTimer;
@@ -573,19 +572,16 @@
 			isa = PBXProject;
 			attributes = {
 				CLASSPREFIX = C;
-				LastUpgradeCheck = 0510;
+				LastUpgradeCheck = 0720;
 				ORGANIZATIONNAME = selfcom;
 				TargetAttributes = {
-					3E44C12218E950EE00FC53BF = {
-						DevelopmentTeam = PAZX553D3X;
-					};
 					3E44C13D18E950EE00FC53BF = {
 						TestTargetID = 3E44C12218E950EE00FC53BF;
 					};
 				};
 			};
 			buildConfigurationList = 3E44C11E18E950EE00FC53BF /* Build configuration list for PBXProject "SMSTimer" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 6.3";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -609,7 +605,6 @@
 			files = (
 				3E81A16618F3A2A800A42207 /* CLoginViewController.xib in Resources */,
 				3E44C13118E950EE00FC53BF /* InfoPlist.strings in Resources */,
-				3E575B3F1A52751000B64399 /* Images-2.xcassets in Resources */,
 				3E95F1B71A5A7A7600382B94 /* 005.png in Resources */,
 				3E575B371A52732100B64399 /* ic_logo.png in Resources */,
 				3E3ED7611907CB7E0033BD29 /* ic_bui_pressed@2x.png in Resources */,
@@ -768,6 +763,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				COPY_PHASE_STRIP = NO;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -787,7 +783,7 @@
 					/usr/include/libxml2,
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-all_load";
 				SDKROOT = iphoneos;
@@ -825,7 +821,7 @@
 					/usr/include/libxml2,
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 6.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				OTHER_LDFLAGS = "-all_load";
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
@@ -837,12 +833,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
-				CODE_SIGN_IDENTITY = "iPhone Distribution: ang gao (PAZX553D3X)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "SMSTimer/SMSTimer-Prefix.pch";
 				INFOPLIST_FILE = "SMSTimer/SMSTimer-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.1719.spotmau11;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "298d2734-feb1-400f-8c3d-99be3650ca4d";
+				TARGETED_DEVICE_FAMILY = 1;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -852,12 +851,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
-				CODE_SIGN_IDENTITY = "iPhone Distribution: ang gao (PAZX553D3X)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "SMSTimer/SMSTimer-Prefix.pch";
 				INFOPLIST_FILE = "SMSTimer/SMSTimer-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.1719.spotmau11;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "298d2734-feb1-400f-8c3d-99be3650ca4d";
+				TARGETED_DEVICE_FAMILY = 1;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
@@ -878,6 +880,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = "SMSTimerTests/SMSTimerTests-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.C.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUNDLE_LOADER)";
 				WRAPPER_EXTENSION = xctest;
@@ -896,6 +899,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "SMSTimer/SMSTimer-Prefix.pch";
 				INFOPLIST_FILE = "SMSTimerTests/SMSTimerTests-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.C.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUNDLE_LOADER)";
 				WRAPPER_EXTENSION = xctest;
@@ -912,7 +916,7 @@
 				3E44C14E18E950EE00FC53BF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		3E44C14F18E950EE00FC53BF /* Build configuration list for PBXNativeTarget "SMSTimer" */ = {
 			isa = XCConfigurationList;
@@ -921,7 +925,7 @@
 				3E44C15118E950EE00FC53BF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		3E44C15218E950EE00FC53BF /* Build configuration list for PBXNativeTarget "SMSTimerTests" */ = {
 			isa = XCConfigurationList;
@@ -930,7 +934,7 @@
 				3E44C15418E950EE00FC53BF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};

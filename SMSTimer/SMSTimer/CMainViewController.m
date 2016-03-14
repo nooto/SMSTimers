@@ -57,8 +57,9 @@
 {
 	[super viewDidLoad];
 	self.title = @"发送短信";
-	[self.view setBackgroundColor:[UIColor colorWithRed:242/255.0 green:248/255.0 blue:250/255.0 alpha:1.0]];
+//	[self.view setBackgroundColor:[UIColor colorWithRed:242/255.0 green:248/255.0 blue:250/255.0 alpha:1.0]];
 
+    [self.mView setFrame:CGRectMake(0, 0, ScreenWidth, ScreenHeight)];
 	//登录按钮
     UIButton  *returnBtn = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, 35, 35)];
     [returnBtn setBackgroundColor:[UIColor clearColor]];

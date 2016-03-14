@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "CA68475843904944ECC85FD6E1F11133F1BCFBB7",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "56F249B7DB0C2BF26ADFC69C936CBD544297FF09" : 0,
+    "CA68475843904944ECC85FD6E1F11133F1BCFBB7" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "85B388EA-2831-4DA4-8614-B853F6C78F43",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "56F249B7DB0C2BF26ADFC69C936CBD544297FF09" : "",
+    "CA68475843904944ECC85FD6E1F11133F1BCFBB7" : "SMSTimers"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "SMSTimer",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "SMSTimer\/SMSTimer.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:nooto\/SMSTimers.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "56F249B7DB0C2BF26ADFC69C936CBD544297FF09"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:nooto\/SMSTimers.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "CA68475843904944ECC85FD6E1F11133F1BCFBB7"
+    }
+  ]
+}
